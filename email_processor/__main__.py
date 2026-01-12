@@ -1,0 +1,68 @@
+"""Main entry point for email_processor package."""
+
+import argparse
+import sys
+import logging
+
+from email_processor import (
+    ConfigLoader,
+    EmailProcessor,
+    clear_passwords,
+    KEYRING_SERVICE_NAME,
+    CONFIG_FILE,
+    __version__,
+)
+
+
+def main() -> int:
+    """Main entry point for CLI."""
+    parser = argparse.ArgumentParser(
+        description="Email Attachment Processor - Downloads attachments from IMAP, organizes by topic, and archives messages.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"Version {__version__}"
+    )
+    parser.add_argument("--clear-passwords", action="store_true", help="Clear saved passwords from keyring")
+    parser.add_argument("--dry-run", action="store_true", help="Simulate processing without downloading or archiving")
+    parser.add_argument("--dry-run-no-connect", action="store_true", help="Dry-run mode with mock IMAP server (no real connection, uses simulated data)")
+    parser.add_argument("--version", action="version", version=f"Email Processor {__version__}")
+    args = parser.parse_args()
+
+    try:
+        cfg = ConfigLoader.load(CONFIG_FILE)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        print(f"Please create {CONFIG_FILE} based on config.yaml.example")
+        return 1
+    except ValueError as e:
+        print(f"Configuration error: {e}")
+        return 1
+    except Exception as e:
+        print(f"Unexpected error loading configuration: {e}")
+        return 1
+
+    if args.clear_passwords:
+        user = cfg.get("imap", {}).get("user")
+        if not user:
+            print("Error: 'imap.user' is missing in config.yaml")
+            return 1
+        clear_passwords(KEYRING_SERVICE_NAME, user)
+    else:
+        try:
+            processor = EmailProcessor(cfg)
+            # If --dry-run-no-connect is set, enable both dry_run and mock_mode
+            dry_run = args.dry_run or args.dry_run_no_connect
+            mock_mode = args.dry_run_no_connect
+            result = processor.process(dry_run=dry_run, mock_mode=mock_mode)
+            print(f"Processed: {result.processed}, Skipped: {result.skipped}, Errors: {result.errors}")
+        except KeyboardInterrupt:
+            logging.info("Interrupted by user")
+            return 0
+        except Exception as e:
+            logging.exception("Fatal error during email processing: %s", e)
+            return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
