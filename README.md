@@ -354,6 +354,4 @@ See `ARCHITECTURE_PROPOSAL.md` for detailed architecture documentation.
 
 # 📚 Additional Documentation
 
-- **Testing Guide**: See `README_TESTS.md`
-- **Improvements List**: See `IMPROVEMENTS.md`
-- **Architecture Details**: See `ARCHITECTURE_PROPOSAL.md`
+- **Testing Guide**: See `README_TESTS.md` 
