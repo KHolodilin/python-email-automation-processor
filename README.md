@@ -68,17 +68,17 @@ email-processor
 python -m email_processor --dry-run
 ```
 
-**Примечание:** В dry-run режиме происходит подключение к IMAP серверу для получения списка писем и анализа (чтобы показать статистику), но файлы не скачиваются и письма не архивируются.
+**Note:** In dry-run mode, the processor connects to the IMAP server to retrieve and analyze the email list (to display statistics), but files are not downloaded and emails are not archived.
 
 ### Dry-Run Mode with Mock Server (No connection)
 ```bash
 python -m email_processor --dry-run-no-connect
 ```
 
-**Примечание:** Режим `--dry-run-no-connect` использует мокированный IMAP сервер с тестовыми данными. Не требует реального подключения к почтовому серверу и пароля. Полезен для тестирования конфигурации без доступа к серверу. Использует 3 тестовых письма:
-- Письмо от `client1@example.com` с темой "Roadmap Q1 2024" и вложением `roadmap.pdf`
-- Письмо от `finance@example.com` с темой "Invoice #12345" и вложением `invoice.pdf`
-- Письмо от `spam@example.com` с темой "Spam Subject" и вложением `spam.exe` (будет пропущено, если отправитель не в списке разрешенных)
+**Note:** The `--dry-run-no-connect` mode uses a mocked IMAP server with test data. It does not require a real mail server connection or a password. It is useful for testing configuration without server access. It uses 3 test emails:
+- Email from `client1@example.com` with subject "Roadmap Q1 2024" and attachment `roadmap.pdf`
+- Email from `finance@example.com` with subject "Invoice #12345" and attachment `invoice.pdf`
+- Email from `spam@example.com` with subject "Spam Subject" and attachment `spam.exe` (will be skipped if the sender is not in the allowed list)
 
 ### Show Version
 ```bash
@@ -115,7 +115,7 @@ Do you really want to delete saved passwords? [y/N]:
 ```  
 
 3. If user answers `y`:
-    - password `email-vkh-processor / <user>` is removed from keyring
+  - password `email-vkh-processor / <user>` is removed from keyring
 
 4. Script outputs report:
 
@@ -188,10 +188,10 @@ allowed_senders:
   - "boss@example.com"
 
 topic_mapping:
-  ".*Роадмэп.*": "roadmap"
-  "(Отчет|Отчёт).*": "reports"
-  "(Invoice|Счёт|Счет).*": "invoices"
-  "Заявка №\d+": "applications"
+  ".*Roadmap.*": "roadmap"
+  "(Report).*": "reports"
+  "(Invoice|Bill).*": "invoices"
+  "Request №\\d+": "applications"
 ```
 
 **Note:** Both absolute and relative paths are supported for `download_dir` and `processed_dir`:
@@ -222,9 +222,9 @@ python -m email_processor --clear-passwords
 ```python
 import keyring
 keyring.set_password(
-    "email-vkh-processor",
-    "your_email@example.com",
-    "MY_PASSWORD"
+  "email-vkh-processor",
+  "your_email@example.com",
+  "MY_PASSWORD"
 )
 ```
 
