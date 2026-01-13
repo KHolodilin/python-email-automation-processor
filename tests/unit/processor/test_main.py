@@ -245,6 +245,7 @@ class TestMainEntryPoint(unittest.TestCase):
         target_path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
     @patch("email_processor.__main__.Path")
+    @patch("email_processor.__main__.console", None)
     def test_create_default_config_example_not_found(self, mock_path_class):
         """Test create_default_config when example file not found."""
         example_path = MagicMock()
@@ -293,10 +294,11 @@ class TestMainEntryPoint(unittest.TestCase):
         mock_path_class.side_effect = lambda p: example_path if "example" in str(p) else target_path
         mock_input.return_value = "n"
 
-        with patch("builtins.print") as mock_print:
-            result = create_default_config("config.yaml")
-            self.assertEqual(result, 0)
-            mock_print.assert_any_call("Cancelled.")
+        with patch("email_processor.__main__.console", None):
+            with patch("builtins.print") as mock_print:
+                result = create_default_config("config.yaml")
+                self.assertEqual(result, 0)
+                mock_print.assert_any_call("Cancelled.")
 
     @patch("email_processor.__main__.Path")
     @patch("email_processor.__main__.shutil.copy2")
