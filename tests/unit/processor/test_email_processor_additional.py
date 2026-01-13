@@ -63,7 +63,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             ("OK", [(None, b"")]),  # Empty header
         ]
 
-        result = self.processor._process_email(mock_mail, b"1", {}, False)
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
         self.assertEqual(result, "skipped")
 
     def test_process_email_header_parse_error(self):
@@ -78,7 +81,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             "email_processor.processor.email_processor.message_from_bytes",
             side_effect=Exception("Parse error"),
         ):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
 
     def test_process_email_invalid_target_folder(self):
@@ -91,7 +97,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         ]
 
         with patch("email_processor.processor.email_processor.validate_path", return_value=False):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
 
     def test_process_email_target_folder_create_error(self):
@@ -104,7 +113,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         ]
 
         with patch("pathlib.Path.mkdir", side_effect=Exception("Permission denied")):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
 
     def test_process_email_message_body_empty(self):
@@ -117,7 +129,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             ("OK", [(None, b"")]),  # Empty message body
         ]
 
-        result = self.processor._process_email(mock_mail, b"1", {}, False)
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
         self.assertEqual(result, "skipped")
 
     def test_process_email_message_parse_error(self):
@@ -134,7 +149,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             "email_processor.processor.email_processor.message_from_bytes",
             side_effect=Exception("Parse error"),
         ):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
 
     def test_process_email_processed_uid_save_error(self):
@@ -152,7 +170,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             "email_processor.processor.email_processor.save_processed_uid_for_day",
             side_effect=Exception("Save error"),
         ):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
 
     def test_process_email_archive_error(self):
@@ -170,7 +191,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             "email_processor.processor.email_processor.archive_message",
             side_effect=Exception("Archive error"),
         ):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             # Should still return "skipped" (no attachments)
             self.assertEqual(result, "skipped")
 
@@ -199,7 +223,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             ("OK", [(None, msg_bytes)]),
         ]
 
-        result = self.processor._process_email(mock_mail, b"1", {}, False)
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
         # Should process successfully
         self.assertEqual(result, "processed")
 
@@ -234,8 +261,13 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         ]
 
         # Mock attachment handler to return False (error)
-        with patch.object(self.processor.attachment_handler, "save_attachment", return_value=False):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+        with patch.object(
+            self.processor.attachment_handler, "save_attachment", return_value=(False, 0)
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             # Should return "error" if attachment processing fails
             self.assertEqual(result, "error")
 
@@ -276,7 +308,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
                 mock_full_msg,  # Second call for full message
             ],
         ):
-            result = self.processor._process_email(mock_mail, b"1", {}, False)
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
 
     def test_process_email_skip_non_allowed_false(self):
@@ -294,7 +329,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             ("OK", [(None, header_bytes)]),
         ]
 
-        result = processor._process_email(mock_mail, b"1", {}, False)
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result = processor._process_email(mock_mail, b"1", {}, False, metrics)
         self.assertEqual(result, "skipped")
         # Should not save UID when skip_non_allowed_as_processed is False
 
@@ -315,7 +353,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             ("OK", [(None, msg_bytes)]),
         ]
 
-        result = processor._process_email(mock_mail, b"1", {}, False)
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result = processor._process_email(mock_mail, b"1", {}, False, metrics)
         # Should not archive when archive_only_mapped is False and no mapped folder
         self.assertEqual(result, "skipped")
 
