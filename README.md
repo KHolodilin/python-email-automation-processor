@@ -63,6 +63,13 @@ python -m email_processor
 email-processor
 ```
 
+### Custom Configuration File
+```bash
+python -m email_processor --config /path/to/custom_config.yaml
+```
+
+**Note:** By default, the processor uses `config.yaml` in the current directory. Use `--config` to specify a different configuration file path.
+
 ### Dry-Run Mode (Test without downloading)
 ```bash
 python -m email_processor --dry-run
@@ -88,6 +95,17 @@ python -m email_processor --version
 ### Clear Saved Passwords
 ```bash
 python -m email_processor --clear-passwords
+```
+
+### Create Default Configuration
+```bash
+python -m email_processor --create-config
+```
+
+**Note:** This command creates a default `config.yaml` file from `config.yaml.example`. If the file already exists, you'll be prompted to confirm overwriting it. You can combine it with `--config` to specify a custom path:
+
+```bash
+python -m email_processor --create-config --config /path/to/custom_config.yaml
 ```
 
 ---

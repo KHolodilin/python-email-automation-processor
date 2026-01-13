@@ -1,9 +1,10 @@
 """Tests for __main__ module."""
 
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from email_processor.__main__ import main
+from email_processor.__main__ import create_default_config, main
 from email_processor.config.constants import KEYRING_SERVICE_NAME
 
 
@@ -100,6 +101,28 @@ class TestMainEntryPoint(unittest.TestCase):
 
     @patch("email_processor.__main__.ConfigLoader.load")
     @patch("email_processor.__main__.EmailProcessor")
+    def test_main_custom_config_path(self, mock_processor_class, mock_load_config):
+        """Test main function with custom config path."""
+        mock_load_config.return_value = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "allowed_senders": [],
+        }
+        mock_processor = MagicMock()
+        mock_processor.process.return_value = MagicMock(processed=2, skipped=1, errors=0)
+        mock_processor_class.return_value = mock_processor
+
+        with patch("sys.argv", ["email_processor", "--config", "custom_config.yaml"]):
+            result = main()
+            self.assertEqual(result, 0)
+            mock_load_config.assert_called_once_with("custom_config.yaml")
+            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    @patch("email_processor.__main__.EmailProcessor")
     def test_main_keyboard_interrupt(self, mock_processor_class, mock_load_config):
         """Test main function handles KeyboardInterrupt."""
         mock_load_config.return_value = {
@@ -137,3 +160,116 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor"]):
             result = main()
             self.assertEqual(result, 1)
+
+    @patch("email_processor.__main__.Path")
+    @patch("email_processor.__main__.shutil.copy2")
+    def test_create_default_config_success(self, mock_copy, mock_path_class):
+        """Test create_default_config successfully creates config file."""
+        # Setup mocks
+        example_path = MagicMock()
+        example_path.exists.return_value = True
+        example_path.absolute.return_value = Path("/path/to/config.yaml.example")
+
+        target_path = MagicMock()
+        target_path.exists.return_value = False
+        target_path.parent = MagicMock()
+        target_path.absolute.return_value = Path("/path/to/config.yaml")
+
+        mock_path_class.side_effect = lambda p: example_path if "example" in str(p) else target_path
+
+        result = create_default_config("config.yaml")
+        self.assertEqual(result, 0)
+        mock_copy.assert_called_once_with(example_path, target_path)
+        target_path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+
+    @patch("email_processor.__main__.Path")
+    def test_create_default_config_example_not_found(self, mock_path_class):
+        """Test create_default_config when example file not found."""
+        example_path = MagicMock()
+        example_path.exists.return_value = False
+        example_path.absolute.return_value = Path("/path/to/config.yaml.example")
+
+        mock_path_class.return_value = example_path
+
+        with patch("builtins.print") as mock_print:
+            result = create_default_config("config.yaml")
+            self.assertEqual(result, 1)
+            mock_print.assert_any_call("Error: Template file config.yaml.example not found")
+
+    @patch("email_processor.__main__.Path")
+    @patch("email_processor.__main__.shutil.copy2")
+    @patch("builtins.input")
+    def test_create_default_config_file_exists_overwrite(
+        self, mock_input, mock_copy, mock_path_class
+    ):
+        """Test create_default_config when file exists and user confirms overwrite."""
+        example_path = MagicMock()
+        example_path.exists.return_value = True
+
+        target_path = MagicMock()
+        target_path.exists.return_value = True
+        target_path.parent = MagicMock()
+        target_path.absolute.return_value = Path("/path/to/config.yaml")
+
+        mock_path_class.side_effect = lambda p: example_path if "example" in str(p) else target_path
+        mock_input.return_value = "y"
+
+        result = create_default_config("config.yaml")
+        self.assertEqual(result, 0)
+        mock_copy.assert_called_once_with(example_path, target_path)
+
+    @patch("email_processor.__main__.Path")
+    @patch("builtins.input")
+    def test_create_default_config_file_exists_cancel(self, mock_input, mock_path_class):
+        """Test create_default_config when file exists and user cancels."""
+        example_path = MagicMock()
+        example_path.exists.return_value = True
+
+        target_path = MagicMock()
+        target_path.exists.return_value = True
+
+        mock_path_class.side_effect = lambda p: example_path if "example" in str(p) else target_path
+        mock_input.return_value = "n"
+
+        with patch("builtins.print") as mock_print:
+            result = create_default_config("config.yaml")
+            self.assertEqual(result, 0)
+            mock_print.assert_any_call("Cancelled.")
+
+    @patch("email_processor.__main__.Path")
+    @patch("email_processor.__main__.shutil.copy2")
+    def test_create_default_config_custom_path(self, mock_copy, mock_path_class):
+        """Test create_default_config with custom config path."""
+        example_path = MagicMock()
+        example_path.exists.return_value = True
+
+        target_path = MagicMock()
+        target_path.exists.return_value = False
+        target_path.parent = MagicMock()
+        target_path.absolute.return_value = Path("/custom/path/config.yaml")
+
+        mock_path_class.side_effect = lambda p: example_path if "example" in str(p) else target_path
+
+        result = create_default_config("custom/path/config.yaml")
+        self.assertEqual(result, 0)
+        mock_copy.assert_called_once_with(example_path, target_path)
+
+    @patch("email_processor.__main__.create_default_config")
+    def test_main_create_config_mode(self, mock_create_config):
+        """Test main function in create-config mode."""
+        mock_create_config.return_value = 0
+
+        with patch("sys.argv", ["email_processor", "--create-config"]):
+            result = main()
+            self.assertEqual(result, 0)
+            mock_create_config.assert_called_once_with("config.yaml")
+
+    @patch("email_processor.__main__.create_default_config")
+    def test_main_create_config_with_custom_path(self, mock_create_config):
+        """Test main function in create-config mode with custom path."""
+        mock_create_config.return_value = 0
+
+        with patch("sys.argv", ["email_processor", "--create-config", "--config", "custom.yaml"]):
+            result = main()
+            self.assertEqual(result, 0)
+            mock_create_config.assert_called_once_with("custom.yaml")
