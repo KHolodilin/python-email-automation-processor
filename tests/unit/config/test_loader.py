@@ -358,12 +358,16 @@ processing:
     
     def test_load_config_io_error(self):
         """Test loading config with IO error."""
-        with patch("pathlib.Path.exists", return_value=True):
-            mock_path = MagicMock()
-            mock_path.open.side_effect = IOError("Permission denied")
-            with patch("pathlib.Path", return_value=mock_path):
-                with self.assertRaises(IOError):
-                    load_config("config.yaml")
+        from pathlib import Path as PathClass
+        mock_path = MagicMock(spec=PathClass)
+        mock_path.exists.return_value = True
+        # Make open() raise IOError when called (as a context manager)
+        mock_context = MagicMock()
+        mock_context.__enter__.side_effect = IOError("Permission denied")
+        mock_path.open.return_value = mock_context
+        with patch("email_processor.config.loader.Path", return_value=mock_path):
+            with self.assertRaises(IOError):
+                load_config("config.yaml")
     
     def test_load_config_not_dict(self):
         """Test loading config that is not a dictionary."""
