@@ -61,14 +61,16 @@ class TestFileManager(unittest.TestCase):
     def test_safe_save_path(self):
         """Test safe save path generation."""
         with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_resolved = Path(tmpdir).resolve()
             # First file
             path1 = safe_save_path(tmpdir, "test.pdf")
-            self.assertEqual(path1, Path(tmpdir) / "test.pdf")
+            # Use resolve() for comparison to handle symlinks (e.g., /var -> /private/var on macOS)
+            self.assertEqual(path1.resolve(), tmpdir_resolved / "test.pdf")
             # Create the file
             path1.write_text("test")
             # Second file with same name should get numbered
             path2 = safe_save_path(tmpdir, "test.pdf")
-            self.assertEqual(path2, Path(tmpdir) / "test_01.pdf")
+            self.assertEqual(path2.resolve(), tmpdir_resolved / "test_01.pdf")
 
     def test_safe_save_path_absolute_path(self):
         """Test safe_save_path works with absolute paths."""
