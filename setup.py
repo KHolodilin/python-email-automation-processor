@@ -13,7 +13,7 @@ if readme_file.exists():
 
 # Read version
 version_file = Path(__file__).parent / "email_processor" / "__version__.py"
-version = "7.1.0"
+version = "7.1.5"
 if version_file.exists():
     with version_file.open("r", encoding="utf-8") as f:
         for line in f:
