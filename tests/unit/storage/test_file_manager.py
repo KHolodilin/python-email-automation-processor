@@ -78,7 +78,8 @@ class TestFileManager(unittest.TestCase):
 
             # Should work with absolute path
             path1 = safe_save_path(str(abs_path), "test.pdf")
-            self.assertEqual(path1.parent, abs_path)
+            # Use resolve() for comparison to handle symlinks (e.g., /var -> /private/var on macOS)
+            self.assertEqual(path1.parent.resolve(), abs_path.resolve())
             self.assertEqual(path1.name, "test.pdf")
 
             # Create file and test duplicate handling
@@ -89,16 +90,18 @@ class TestFileManager(unittest.TestCase):
     def test_safe_save_path_filename_sanitization(self):
         """Test safe_save_path sanitizes filenames with path separators."""
         with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_resolved = Path(tmpdir).resolve()
             # Filename with path separators should be sanitized
             path1 = safe_save_path(tmpdir, "../test.pdf")
             self.assertEqual(path1.name, "test.pdf")
-            self.assertEqual(path1.parent, Path(tmpdir).resolve())
+            # Use resolve() for comparison to handle symlinks (e.g., /var -> /private/var on macOS)
+            self.assertEqual(path1.parent.resolve(), tmpdir_resolved)
 
             # Filename with backslashes (Windows)
             if os.name == "nt":
                 path2 = safe_save_path(tmpdir, "..\\test.pdf")
                 self.assertEqual(path2.name, "test.pdf")
-                self.assertEqual(path2.parent, Path(tmpdir).resolve())
+                self.assertEqual(path2.parent.resolve(), tmpdir_resolved)
 
     def test_file_manager_safe_save_path(self):
         """Test FileManager.safe_save_path method."""
