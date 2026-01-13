@@ -73,7 +73,7 @@ class AttachmentHandler:
 
     def save_attachment(
         self, part: email.message.Message, target_folder: Path, uid: str, dry_run: bool
-    ) -> bool:
+    ) -> tuple[bool, int]:
         """
         Save attachment to target folder.
 
@@ -84,7 +84,7 @@ class AttachmentHandler:
             dry_run: If True, simulate saving without actual file write
 
         Returns:
-            True if attachment was saved successfully, False otherwise
+            Tuple of (success: bool, file_size: int). file_size is 0 if not saved or in dry_run mode.
         """
         uid_logger = get_logger(uid=uid)
 
@@ -93,55 +93,58 @@ class AttachmentHandler:
             filename = decode_mime_header_value(filename_raw)
             if not filename:
                 uid_logger.debug("attachment_empty_filename")
-                return False
+                return (False, 0)
 
             # Check extension filter
             if not self.is_allowed_extension(filename):
                 ext = Path(filename).suffix.lower()
                 uid_logger.debug("attachment_extension_blocked", filename=filename, extension=ext)
-                return False
+                return (False, 0)
 
             save_path = safe_save_path(str(target_folder), filename)
             payload = part.get_payload(decode=True)
             if payload is None:
                 uid_logger.warning("attachment_no_payload", filename=filename)
-                return False
+                return (False, 0)
+
+            file_size = len(payload)
 
             # Validate attachment size
-            if len(payload) > self.max_size:
+            if file_size > self.max_size:
                 uid_logger.warning(
                     "attachment_too_large",
                     filename=filename,
-                    size=len(payload),
+                    size=file_size,
                     max_size=self.max_size,
                 )
-                return False
+                return (False, 0)
 
             # Check disk space (with 10MB buffer)
-            required_bytes = len(payload) + 10 * 1024 * 1024
+            required_bytes = file_size + 10 * 1024 * 1024
             if not check_disk_space(save_path.parent, required_bytes):
                 uid_logger.error(
                     "insufficient_disk_space",
                     filename=filename,
-                    required=len(payload),
+                    required=file_size,
                     required_with_buffer=required_bytes,
                 )
-                return False
+                return (False, 0)
 
             if dry_run:
-                uid_logger.info("dry_run_save_file", path=str(save_path), size=len(payload))
+                uid_logger.info("dry_run_save_file", path=str(save_path), size=file_size)
+                return (True, 0)  # Return 0 size in dry_run mode
             else:
                 with save_path.open("wb") as f:
                     f.write(payload)
             uid_logger.info("file_saved", path=str(save_path))
-            return True
+            return (True, file_size)
         except OSError as e:
             uid_logger.error(
                 "attachment_save_io_error",
                 filename=filename if "filename" in locals() else "unknown",
                 error=str(e),
             )
-            return False
+            return (False, 0)
         except Exception as e:
             uid_logger.error(
                 "attachment_process_error",
@@ -149,7 +152,7 @@ class AttachmentHandler:
                 error=str(e),
                 exc_info=True,
             )
-            return False
+            return (False, 0)
 
     def validate_size(self, size: int) -> bool:
         """Validate attachment size."""

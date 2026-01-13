@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from email_processor.__main__ import create_default_config, main
 from email_processor.config.constants import KEYRING_SERVICE_NAME
+from email_processor.processor.email_processor import ProcessingMetrics, ProcessingResult
 
 
 class TestMainEntryPoint(unittest.TestCase):
@@ -50,7 +51,10 @@ class TestMainEntryPoint(unittest.TestCase):
             "allowed_senders": [],
         }
         mock_processor = MagicMock()
-        mock_processor.process.return_value = MagicMock(processed=5, skipped=3, errors=1)
+        metrics = ProcessingMetrics(total_time=1.5)
+        mock_processor.process.return_value = ProcessingResult(
+            processed=5, skipped=3, errors=1, file_stats={}, metrics=metrics
+        )
         mock_processor_class.return_value = mock_processor
 
         with patch("sys.argv", ["email_processor"]):
@@ -71,7 +75,10 @@ class TestMainEntryPoint(unittest.TestCase):
             "allowed_senders": [],
         }
         mock_processor = MagicMock()
-        mock_processor.process.return_value = MagicMock(processed=0, skipped=0, errors=0)
+        metrics = ProcessingMetrics(total_time=0.5)
+        mock_processor.process.return_value = ProcessingResult(
+            processed=0, skipped=0, errors=0, file_stats={}, metrics=metrics
+        )
         mock_processor_class.return_value = mock_processor
 
         with patch("sys.argv", ["email_processor", "--dry-run"]):
@@ -112,13 +119,68 @@ class TestMainEntryPoint(unittest.TestCase):
             "allowed_senders": [],
         }
         mock_processor = MagicMock()
-        mock_processor.process.return_value = MagicMock(processed=2, skipped=1, errors=0)
+        metrics = ProcessingMetrics(total_time=0.8)
+        mock_processor.process.return_value = ProcessingResult(
+            processed=2, skipped=1, errors=0, file_stats={}, metrics=metrics
+        )
         mock_processor_class.return_value = mock_processor
 
         with patch("sys.argv", ["email_processor", "--config", "custom_config.yaml"]):
             result = main()
             self.assertEqual(result, 0)
             mock_load_config.assert_called_once_with("custom_config.yaml")
+            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    @patch("email_processor.__main__.EmailProcessor")
+    def test_main_with_mock_metrics(self, mock_processor_class, mock_load_config):
+        """Test main function handles ProcessingResult with MagicMock metrics gracefully."""
+        mock_load_config.return_value = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "allowed_senders": [],
+        }
+        mock_processor = MagicMock()
+        # Create ProcessingResult with MagicMock metrics to test error handling
+        mock_result = ProcessingResult(
+            processed=1, skipped=0, errors=0, file_stats={}, metrics=MagicMock()
+        )
+        mock_processor.process.return_value = mock_result
+        mock_processor_class.return_value = mock_processor
+
+        with patch("sys.argv", ["email_processor"]):
+            result = main()
+            # Should not crash, even with MagicMock metrics
+            self.assertEqual(result, 0)
+            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    @patch("email_processor.__main__.EmailProcessor")
+    def test_main_with_none_metrics(self, mock_processor_class, mock_load_config):
+        """Test main function handles ProcessingResult with None metrics gracefully."""
+        mock_load_config.return_value = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "allowed_senders": [],
+        }
+        mock_processor = MagicMock()
+        # Create ProcessingResult with None metrics
+        mock_result = ProcessingResult(
+            processed=1, skipped=0, errors=0, file_stats={}, metrics=None
+        )
+        mock_processor.process.return_value = mock_result
+        mock_processor_class.return_value = mock_processor
+
+        with patch("sys.argv", ["email_processor"]):
+            result = main()
+            # Should not crash, even with None metrics
+            self.assertEqual(result, 0)
             mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
 
     @patch("email_processor.__main__.ConfigLoader.load")
@@ -183,6 +245,7 @@ class TestMainEntryPoint(unittest.TestCase):
         target_path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
     @patch("email_processor.__main__.Path")
+    @patch("email_processor.__main__.console", None)
     def test_create_default_config_example_not_found(self, mock_path_class):
         """Test create_default_config when example file not found."""
         example_path = MagicMock()
@@ -231,10 +294,11 @@ class TestMainEntryPoint(unittest.TestCase):
         mock_path_class.side_effect = lambda p: example_path if "example" in str(p) else target_path
         mock_input.return_value = "n"
 
-        with patch("builtins.print") as mock_print:
-            result = create_default_config("config.yaml")
-            self.assertEqual(result, 0)
-            mock_print.assert_any_call("Cancelled.")
+        with patch("email_processor.__main__.console", None):
+            with patch("builtins.print") as mock_print:
+                result = create_default_config("config.yaml")
+                self.assertEqual(result, 0)
+                mock_print.assert_any_call("Cancelled.")
 
     @patch("email_processor.__main__.Path")
     @patch("email_processor.__main__.shutil.copy2")

@@ -46,7 +46,9 @@ class TestAttachmentHandler(unittest.TestCase):
         part.add_header("Content-Disposition", "attachment", filename="test.pdf")
 
         result = handler.save_attachment(part, target_folder, "123", dry_run=False)
-        self.assertTrue(result)
+        self.assertTrue(result[0])
+        # File size should match payload size (b"test content" = 12 bytes)
+        self.assertEqual(result[1], 12)
 
         # Check file was created
         saved_file = list(target_folder.glob("test*.pdf"))[0]
@@ -63,7 +65,8 @@ class TestAttachmentHandler(unittest.TestCase):
         part.add_header("Content-Disposition", "attachment", filename="test.pdf")
 
         result = handler.save_attachment(part, target_folder, "123", dry_run=True)
-        self.assertTrue(result)
+        self.assertTrue(result[0])
+        self.assertEqual(result[1], 0)  # Size is 0 in dry_run mode
 
         # File should not be created in dry-run
         self.assertEqual(len(list(target_folder.glob("test*.pdf"))), 0)
@@ -79,7 +82,8 @@ class TestAttachmentHandler(unittest.TestCase):
         part.add_header("Content-Disposition", "attachment", filename="")
 
         result = handler.save_attachment(part, target_folder, "123", dry_run=False)
-        self.assertFalse(result)
+        self.assertFalse(result[0])
+        self.assertEqual(result[1], 0)
 
     def test_save_attachment_no_payload(self):
         """Test attachment saving with no payload."""
@@ -92,7 +96,8 @@ class TestAttachmentHandler(unittest.TestCase):
         # No payload set
 
         result = handler.save_attachment(part, target_folder, "123", dry_run=False)
-        self.assertFalse(result)
+        self.assertFalse(result[0])
+        self.assertEqual(result[1], 0)
 
     def test_save_attachment_too_large(self):
         """Test attachment saving with file too large."""
@@ -105,7 +110,8 @@ class TestAttachmentHandler(unittest.TestCase):
         part.add_header("Content-Disposition", "attachment", filename="test.pdf")
 
         result = handler.save_attachment(part, target_folder, "123", dry_run=False)
-        self.assertFalse(result)
+        self.assertFalse(result[0])
+        self.assertEqual(result[1], 0)
 
     def test_save_attachment_io_error(self):
         """Test attachment saving with IO error."""
@@ -119,7 +125,8 @@ class TestAttachmentHandler(unittest.TestCase):
 
         with patch("pathlib.Path.open", side_effect=OSError("Permission denied")):
             result = handler.save_attachment(part, target_folder, "123", dry_run=False)
-            self.assertFalse(result)
+            self.assertFalse(result[0])
+            self.assertEqual(result[1], 0)
 
     def test_save_attachment_unexpected_error(self):
         """Test attachment saving with unexpected error."""
@@ -133,7 +140,8 @@ class TestAttachmentHandler(unittest.TestCase):
 
         with patch("pathlib.Path.open", side_effect=Exception("Unexpected error")):
             result = handler.save_attachment(part, target_folder, "123", dry_run=False)
-            self.assertFalse(result)
+            self.assertFalse(result[0])
+            self.assertEqual(result[1], 0)
 
     def test_is_allowed_extension_no_filter(self):
         """Test extension filtering with no restrictions."""
@@ -204,7 +212,8 @@ class TestAttachmentHandler(unittest.TestCase):
         part.add_header("Content-Disposition", "attachment", filename="malware.exe")
 
         result = handler.save_attachment(part, target_folder, "123", dry_run=False)
-        self.assertFalse(result)
+        self.assertFalse(result[0])
+        self.assertEqual(result[1], 0)
 
         # File should not be created
         self.assertEqual(len(list(target_folder.glob("malware*.exe"))), 0)
@@ -221,7 +230,7 @@ class TestAttachmentHandler(unittest.TestCase):
         part1.add_header("Content-Disposition", "attachment", filename="document.pdf")
 
         result1 = handler.save_attachment(part1, target_folder, "123", dry_run=False)
-        self.assertTrue(result1)
+        self.assertTrue(result1[0])
 
         # Not allowed extension
         part2 = email.message.Message()
@@ -229,4 +238,4 @@ class TestAttachmentHandler(unittest.TestCase):
         part2.add_header("Content-Disposition", "attachment", filename="script.txt")
 
         result2 = handler.save_attachment(part2, target_folder, "123", dry_run=False)
-        self.assertFalse(result2)
+        self.assertFalse(result2[0])

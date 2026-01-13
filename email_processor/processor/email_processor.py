@@ -4,7 +4,8 @@ import email
 import imaplib
 import logging
 import re
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from email import message_from_bytes
 from email.utils import parseaddr
@@ -12,6 +13,13 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 import structlog
+
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
 
 try:
     from tqdm import tqdm
@@ -71,6 +79,19 @@ def get_start_date(days_back: int) -> str:
 
 
 @dataclass
+class ProcessingMetrics:
+    """Performance metrics for email processing."""
+
+    total_time: float = 0.0  # Total processing time in seconds
+    per_email_time: list[float] = field(default_factory=list)  # Time per email in seconds
+    total_downloaded_size: int = 0  # Total size of downloaded files in bytes
+    imap_operations: int = 0  # Number of IMAP operations
+    imap_operation_times: list[float] = field(default_factory=list)  # Time for each IMAP operation
+    memory_peak: Optional[int] = None  # Peak memory usage in bytes (if available)
+    memory_current: Optional[int] = None  # Current memory usage in bytes (if available)
+
+
+@dataclass
 class ProcessingResult:
     """Result of email processing."""
 
@@ -78,6 +99,7 @@ class ProcessingResult:
     skipped: int
     errors: int
     file_stats: Optional[dict[str, int]] = None
+    metrics: ProcessingMetrics = field(default_factory=ProcessingMetrics)
 
 
 class EmailProcessor:
@@ -156,8 +178,20 @@ class EmailProcessor:
             mock_mode: If True, use mock IMAP client instead of real connection
 
         Returns:
-            ProcessingResult with statistics
+            ProcessingResult with statistics and performance metrics
         """
+        # Initialize metrics
+        metrics = ProcessingMetrics()
+        process_start_time = time.time()
+
+        # Get initial memory usage if available
+        if PSUTIL_AVAILABLE:
+            try:
+                process = psutil.Process()
+                metrics.memory_current = process.memory_info().rss
+            except Exception:
+                pass
+
         # Set up context IDs for this processing session
         request_id = set_request_id()
         correlation_id = set_correlation_id()
@@ -196,12 +230,14 @@ class EmailProcessor:
                 imap_password = get_imap_password(self.imap_user)
             except ValueError as e:
                 self.logger.error("password_error", error=str(e), error_type=type(e).__name__)
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except (KeyError, RuntimeError) as e:
                 self.logger.error(
                     "password_keyring_error", error=str(e), error_type=type(e).__name__
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except Exception as e:
                 self.logger.error(
                     "password_unexpected_error",
@@ -209,7 +245,8 @@ class EmailProcessor:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
 
             # Connect to real IMAP server
             try:
@@ -224,10 +261,12 @@ class EmailProcessor:
                 self.logger.error(
                     "imap_connection_failed", error=str(e), error_type=type(e).__name__
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except (TimeoutError, OSError) as e:
                 self.logger.error("imap_network_error", error=str(e), error_type=type(e).__name__)
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except Exception as e:
                 self.logger.error(
                     "imap_connection_unexpected_error",
@@ -235,7 +274,8 @@ class EmailProcessor:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
 
         start_date = get_start_date(self.start_days_back)
         self.logger.info("processing_started", start_date=start_date)
@@ -243,20 +283,26 @@ class EmailProcessor:
         try:
             # Select INBOX
             try:
+                imap_start = time.time()
                 status, _ = mail.select("INBOX")
+                metrics.imap_operations += 1
+                metrics.imap_operation_times.append(time.time() - imap_start)
                 if status != "OK":
                     self.logger.error("inbox_select_failed", status=status)
-                    return ProcessingResult(processed=0, skipped=0, errors=0)
+                    metrics.total_time = time.time() - process_start_time
+                    return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except imaplib.IMAP4.error as e:
                 self.logger.error(
                     "inbox_select_imap_error", error=str(e), error_type=type(e).__name__
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except (AttributeError, TypeError) as e:
                 self.logger.error(
                     "inbox_select_invalid_state", error=str(e), error_type=type(e).__name__
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except Exception as e:
                 self.logger.error(
                     "inbox_select_unexpected_error",
@@ -264,24 +310,31 @@ class EmailProcessor:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
 
             # Search emails
             try:
+                imap_start = time.time()
                 status, messages = mail.search(None, f'(SINCE "{start_date}")')
+                metrics.imap_operations += 1
+                metrics.imap_operation_times.append(time.time() - imap_start)
                 if status != "OK":
                     self.logger.error("email_search_error", status=status)
-                    return ProcessingResult(processed=0, skipped=0, errors=0)
+                    metrics.total_time = time.time() - process_start_time
+                    return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except imaplib.IMAP4.error as e:
                 self.logger.error(
                     "email_search_imap_error", error=str(e), error_type=type(e).__name__
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except (AttributeError, TypeError) as e:
                 self.logger.error(
                     "email_search_invalid_state", error=str(e), error_type=type(e).__name__
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
             except Exception as e:
                 self.logger.error(
                     "email_search_unexpected_error",
@@ -289,7 +342,8 @@ class EmailProcessor:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                return ProcessingResult(processed=0, skipped=0, errors=0)
+                metrics.total_time = time.time() - process_start_time
+                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
 
             email_ids = messages[0].split() if messages and messages[0] else []
             self.logger.info("emails_found", count=len(email_ids))
@@ -313,7 +367,10 @@ class EmailProcessor:
 
             for msg_id in pbar:
                 try:
-                    result = self._process_email(mail, msg_id, processed_cache, dry_run)
+                    email_start = time.time()
+                    result = self._process_email(mail, msg_id, processed_cache, dry_run, metrics)
+                    email_time = time.time() - email_start
+                    metrics.per_email_time.append(email_time)
                     if result == "processed":
                         processed_count += 1
                     elif result == "skipped":
@@ -397,11 +454,23 @@ class EmailProcessor:
                 except Exception as e:
                     logging.debug("Unexpected error collecting file statistics: %s", e)
 
+            # Calculate final metrics
+            metrics.total_time = time.time() - process_start_time
+            if PSUTIL_AVAILABLE:
+                try:
+                    process = psutil.Process()
+                    metrics.memory_current = process.memory_info().rss
+                    if metrics.memory_peak is None or metrics.memory_current > metrics.memory_peak:
+                        metrics.memory_peak = metrics.memory_current
+                except Exception:
+                    pass
+
             return ProcessingResult(
                 processed=processed_count,
                 skipped=skipped_count,
                 errors=error_count,
                 file_stats=file_stats,
+                metrics=metrics,
             )
 
         finally:
@@ -420,16 +489,27 @@ class EmailProcessor:
         msg_id: bytes,
         processed_cache: dict[str, set[str]],
         dry_run: bool,
+        metrics: ProcessingMetrics,
     ) -> str:
         """
         Process a single email message.
+
+        Args:
+            mail: IMAP connection
+            msg_id: Message ID
+            processed_cache: Cache of processed UIDs
+            dry_run: If True, simulate processing
+            metrics: Performance metrics to update
 
         Returns:
             "processed", "skipped", or "error"
         """
         # Fetch UID
         try:
+            imap_start = time.time()
             status, meta = mail.fetch(msg_id, "(UID RFC822.SIZE BODYSTRUCTURE)")  # type: ignore[arg-type]
+            metrics.imap_operations += 1
+            metrics.imap_operation_times.append(time.time() - imap_start)
             if status != "OK" or not meta or not meta[0]:
                 self.logger.debug(
                     "uid_fetch_failed",
@@ -493,10 +573,13 @@ class EmailProcessor:
 
         # Fetch headers
         try:
+            imap_start = time.time()
             status, header_data = mail.fetch(
                 msg_id,  # type: ignore[arg-type]
                 "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])",
             )
+            metrics.imap_operations += 1
+            metrics.imap_operation_times.append(time.time() - imap_start)
             if status != "OK" or not header_data or not header_data[0]:
                 uid_logger.debug("header_fetch_failed", status=status)
                 return "skipped"
@@ -611,7 +694,10 @@ class EmailProcessor:
 
         # Fetch full message
         try:
+            imap_start = time.time()
             status, full_data = mail.fetch(msg_id, "(RFC822)")  # type: ignore[arg-type]
+            metrics.imap_operations += 1
+            metrics.imap_operation_times.append(time.time() - imap_start)
             if status != "OK" or not full_data or not full_data[0]:
                 uid_logger.warning("message_fetch_failed", status=status)
                 try:
@@ -665,7 +751,18 @@ class EmailProcessor:
         try:
             for part in msg.walk():
                 if part.get_content_disposition() == "attachment":
-                    if self.attachment_handler.save_attachment(part, target_folder, uid, dry_run):
+                    result = self.attachment_handler.save_attachment(
+                        part, target_folder, uid, dry_run
+                    )
+                    if isinstance(result, tuple):
+                        success, file_size = result
+                        if success:
+                            attachments_found = True
+                            if file_size:
+                                metrics.total_downloaded_size += file_size
+                        else:
+                            attachment_errors.append("Failed to save attachment")
+                    elif result:
                         attachments_found = True
                     else:
                         attachment_errors.append("Failed to save attachment")
