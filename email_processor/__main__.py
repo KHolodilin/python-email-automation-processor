@@ -193,7 +193,13 @@ def _display_results_rich(result, console_instance: "Console") -> None:
     console_instance.print(table)
 
     # Display performance metrics
-    if result.metrics and result.metrics.total_time > 0:
+    # Safely check if metrics exists and is a real ProcessingMetrics object
+    if (
+        result.metrics
+        and hasattr(result.metrics, "total_time")
+        and isinstance(result.metrics.total_time, (int, float))
+        and result.metrics.total_time > 0
+    ):
         metrics_table = Table(
             title="Performance Metrics", show_header=True, header_style="bold blue"
         )
@@ -214,15 +220,27 @@ def _display_results_rich(result, console_instance: "Console") -> None:
         metrics_table.add_row("Total Time", time_str)
 
         # Average time per email
-        if result.metrics.per_email_time:
+        if (
+            hasattr(result.metrics, "per_email_time")
+            and result.metrics.per_email_time
+            and isinstance(result.metrics.per_email_time, list)
+        ):
             avg_time = sum(result.metrics.per_email_time) / len(result.metrics.per_email_time)
             avg_time_str = f"{avg_time * 1000:.2f} ms" if avg_time < 1 else f"{avg_time:.2f} s"
             metrics_table.add_row("Avg Time/Email", avg_time_str)
 
         # IMAP operations
-        if result.metrics.imap_operations > 0:
+        if (
+            hasattr(result.metrics, "imap_operations")
+            and isinstance(result.metrics.imap_operations, int)
+            and result.metrics.imap_operations > 0
+        ):
             metrics_table.add_row("IMAP Operations", str(result.metrics.imap_operations))
-            if result.metrics.imap_operation_times:
+            if (
+                hasattr(result.metrics, "imap_operation_times")
+                and result.metrics.imap_operation_times
+                and isinstance(result.metrics.imap_operation_times, list)
+            ):
                 avg_imap = sum(result.metrics.imap_operation_times) / len(
                     result.metrics.imap_operation_times
                 )
@@ -239,7 +257,11 @@ def _display_results_rich(result, console_instance: "Console") -> None:
             metrics_table.add_row("Downloaded Size", size_str)
 
         # Memory usage
-        if result.metrics.memory_current:
+        if (
+            hasattr(result.metrics, "memory_current")
+            and result.metrics.memory_current is not None
+            and isinstance(result.metrics.memory_current, int)
+        ):
             mem_mb = result.metrics.memory_current / (1024 * 1024)
             metrics_table.add_row("Memory Usage", f"{mem_mb:.2f} MB")
             if result.metrics.memory_peak:
