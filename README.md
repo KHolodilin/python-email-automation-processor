@@ -352,6 +352,4 @@ email_processor/
 
 See `ARCHITECTURE_PROPOSAL.md` for detailed architecture documentation.
 
-# 📚 Additional Documentation
-
-- **Testing Guide**: See `README_TESTS.md` 
+# 📚 Additional Documentation- **Testing Guide**: See `README_TESTS.md` 

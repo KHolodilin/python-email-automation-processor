@@ -56,7 +56,7 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor"]):
             result = main()
             self.assertEqual(result, 0)
-            mock_processor.process.assert_called_once_with(dry_run=False)
+            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
     
     @patch("email_processor.__main__.ConfigLoader.load")
     @patch("email_processor.__main__.EmailProcessor")
@@ -77,7 +77,7 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "--dry-run"]):
             result = main()
             self.assertEqual(result, 0)
-            mock_processor.process.assert_called_once_with(dry_run=True)
+            mock_processor.process.assert_called_once_with(dry_run=True, mock_mode=False)
     
     @patch("email_processor.__main__.ConfigLoader.load")
     def test_main_config_file_not_found(self, mock_load_config):
