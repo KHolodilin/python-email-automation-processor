@@ -99,5 +99,5 @@ jobs:
 
       - name: Test installation
         run: |
-          pip install dist/email_processer-*.whl
+          pip install dist/*.whl
           email-processor --version
