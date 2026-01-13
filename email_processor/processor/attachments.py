@@ -1,33 +1,33 @@
 """Attachment handler for processing email attachments."""
 
-from pathlib import Path
-from typing import Optional, List, Set
 import email.message
+from pathlib import Path
+from typing import Optional
 
+from email_processor.config.constants import MAX_ATTACHMENT_SIZE
+from email_processor.logging.setup import get_logger
 from email_processor.storage.file_manager import safe_save_path
 from email_processor.utils.disk_utils import check_disk_space
 from email_processor.utils.email_utils import decode_mime_header_value
-from email_processor.logging.setup import get_logger
-from email_processor.config.constants import MAX_ATTACHMENT_SIZE
 
 
 class AttachmentHandler:
     """Attachment handler class for processing email attachments."""
-    
+
     def __init__(
         self,
         download_dir: Path,
         max_size: int = MAX_ATTACHMENT_SIZE,
-        allowed_extensions: Optional[List[str]] = None,
-        blocked_extensions: Optional[List[str]] = None,
+        allowed_extensions: Optional[list[str]] = None,
+        blocked_extensions: Optional[list[str]] = None,
     ):
         """
         Initialize attachment handler.
-        
+
         Args:
             download_dir: Base download directory
             max_size: Maximum attachment size in bytes
-            allowed_extensions: List of allowed file extensions (e.g., [".pdf", ".doc"]). 
+            allowed_extensions: List of allowed file extensions (e.g., [".pdf", ".doc"]).
                                If None or empty, all extensions are allowed (unless blocked).
             blocked_extensions: List of blocked file extensions (e.g., [".exe", ".bat"]).
                                If None or empty, no extensions are blocked.
@@ -35,75 +35,88 @@ class AttachmentHandler:
         self.download_dir = download_dir
         self.max_size = max_size
         # Normalize extensions to lowercase with dot prefix
-        self.allowed_extensions: Optional[Set[str]] = None
+        self.allowed_extensions: Optional[set[str]] = None
         if allowed_extensions:
-            self.allowed_extensions = {ext.lower() if ext.startswith('.') else f".{ext.lower()}" for ext in allowed_extensions}
-        self.blocked_extensions: Optional[Set[str]] = None
+            self.allowed_extensions = {
+                ext.lower() if ext.startswith(".") else f".{ext.lower()}"
+                for ext in allowed_extensions
+            }
+        self.blocked_extensions: Optional[set[str]] = None
         if blocked_extensions:
-            self.blocked_extensions = {ext.lower() if ext.startswith('.') else f".{ext.lower()}" for ext in blocked_extensions}
-    
+            self.blocked_extensions = {
+                ext.lower() if ext.startswith(".") else f".{ext.lower()}"
+                for ext in blocked_extensions
+            }
+
     def is_allowed_extension(self, filename: str) -> bool:
         """
         Check if attachment extension is allowed.
-        
+
         Args:
             filename: Attachment filename
-            
+
         Returns:
             True if extension is allowed, False otherwise
         """
         ext = Path(filename).suffix.lower()
-        
+
         # Check blocked extensions first (highest priority)
         if self.blocked_extensions and ext in self.blocked_extensions:
             return False
-        
+
         # Check allowed extensions (if specified)
         if self.allowed_extensions:
             return ext in self.allowed_extensions
-        
+
         # If no restrictions, allow all
         return True
-    
-    def save_attachment(self, part: email.message.Message, target_folder: Path, uid: str, dry_run: bool) -> bool:
+
+    def save_attachment(
+        self, part: email.message.Message, target_folder: Path, uid: str, dry_run: bool
+    ) -> bool:
         """
         Save attachment to target folder.
-        
+
         Args:
             part: Email message part containing attachment
             target_folder: Target folder path
             uid: Email UID for logging
             dry_run: If True, simulate saving without actual file write
-        
+
         Returns:
             True if attachment was saved successfully, False otherwise
         """
         uid_logger = get_logger(uid=uid)
-        
+
         try:
             filename_raw = part.get_filename()
             filename = decode_mime_header_value(filename_raw)
             if not filename:
                 uid_logger.debug("attachment_empty_filename")
                 return False
-            
+
             # Check extension filter
             if not self.is_allowed_extension(filename):
                 ext = Path(filename).suffix.lower()
                 uid_logger.debug("attachment_extension_blocked", filename=filename, extension=ext)
                 return False
-            
+
             save_path = safe_save_path(str(target_folder), filename)
             payload = part.get_payload(decode=True)
             if payload is None:
                 uid_logger.warning("attachment_no_payload", filename=filename)
                 return False
-            
+
             # Validate attachment size
             if len(payload) > self.max_size:
-                uid_logger.warning("attachment_too_large", filename=filename, size=len(payload), max_size=self.max_size)
+                uid_logger.warning(
+                    "attachment_too_large",
+                    filename=filename,
+                    size=len(payload),
+                    max_size=self.max_size,
+                )
                 return False
-            
+
             # Check disk space (with 10MB buffer)
             required_bytes = len(payload) + 10 * 1024 * 1024
             if not check_disk_space(save_path.parent, required_bytes):
@@ -111,10 +124,10 @@ class AttachmentHandler:
                     "insufficient_disk_space",
                     filename=filename,
                     required=len(payload),
-                    required_with_buffer=required_bytes
+                    required_with_buffer=required_bytes,
                 )
                 return False
-            
+
             if dry_run:
                 uid_logger.info("dry_run_save_file", path=str(save_path), size=len(payload))
             else:
@@ -122,13 +135,22 @@ class AttachmentHandler:
                     f.write(payload)
             uid_logger.info("file_saved", path=str(save_path))
             return True
-        except IOError as e:
-            uid_logger.error("attachment_save_io_error", filename=filename if 'filename' in locals() else "unknown", error=str(e))
+        except OSError as e:
+            uid_logger.error(
+                "attachment_save_io_error",
+                filename=filename if "filename" in locals() else "unknown",
+                error=str(e),
+            )
             return False
         except Exception as e:
-            uid_logger.error("attachment_process_error", filename=filename if 'filename' in locals() else "unknown", error=str(e), exc_info=True)
+            uid_logger.error(
+                "attachment_process_error",
+                filename=filename if "filename" in locals() else "unknown",
+                error=str(e),
+                exc_info=True,
+            )
             return False
-    
+
     def validate_size(self, size: int) -> bool:
         """Validate attachment size."""
         return size <= self.max_size

@@ -1,17 +1,16 @@
 """Configuration loading and validation."""
 
-from pathlib import Path
-from typing import Dict, Any
-import yaml
 import re
+from pathlib import Path
+from typing import Any
 
-from email_processor.logging.setup import get_logger
+import yaml
 
 
 def validate_config(cfg: dict) -> None:
     """Validate configuration structure and required fields."""
     errors = []
-    
+
     # Validate IMAP section
     if "imap" not in cfg:
         errors.append("Missing required section: 'imap'")
@@ -38,7 +37,7 @@ def validate_config(cfg: dict) -> None:
                         errors.append("'imap.retry_delay' must be >= 0")
                 except (ValueError, TypeError):
                     errors.append("'imap.retry_delay' must be an integer")
-    
+
     # Validate processing section
     if "processing" not in cfg:
         errors.append("Missing required section: 'processing'")
@@ -64,8 +63,10 @@ def validate_config(cfg: dict) -> None:
             if "log_level" in proc:
                 valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
                 if proc["log_level"].upper() not in valid_levels:
-                    errors.append(f"'processing.log_level' must be one of: {', '.join(valid_levels)}")
-    
+                    errors.append(
+                        f"'processing.log_level' must be one of: {', '.join(valid_levels)}"
+                    )
+
     # Validate allowed_senders
     if "allowed_senders" in cfg:
         if not isinstance(cfg["allowed_senders"], list):
@@ -73,7 +74,7 @@ def validate_config(cfg: dict) -> None:
         elif len(cfg["allowed_senders"]) == 0:
             # Use print for validation warnings before logging is set up
             print("Warning: 'allowed_senders' is empty - no emails will be processed")
-    
+
     # Validate topic_mapping
     if "topic_mapping" in cfg:
         if not isinstance(cfg["topic_mapping"], dict):
@@ -85,42 +86,44 @@ def validate_config(cfg: dict) -> None:
                 except re.error as e:
                     errors.append(f"Invalid regex pattern in topic_mapping: '{pattern}' - {e}")
                 if not isinstance(folder, str) or not folder:
-                    errors.append(f"Invalid folder name for pattern '{pattern}': must be non-empty string")
-    
+                    errors.append(
+                        f"Invalid folder name for pattern '{pattern}': must be non-empty string"
+                    )
+
     if errors:
         error_msg = "Configuration validation failed:\n  - " + "\n  - ".join(errors)
         raise ValueError(error_msg)
 
 
-def load_config(path: str) -> Dict[str, Any]:
+def load_config(path: str) -> dict[str, Any]:
     """Load and validate configuration from YAML file."""
     config_path = Path(path)
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
-    
+
     try:
         with config_path.open("r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
     except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML syntax in {path}: {e}")
+        raise ValueError(f"Invalid YAML syntax in {path}: {e}") from e
     except Exception as e:
-        raise IOError(f"Error reading configuration file {path}: {e}")
-    
+        raise OSError(f"Error reading configuration file {path}: {e}") from e
+
     if not isinstance(cfg, dict):
-        raise ValueError(f"{path} must contain a top-level YAML object (dictionary).")
-    
+        raise TypeError(f"{path} must contain a top-level YAML object (dictionary).")
+
     validate_config(cfg)
     return cfg
 
 
 class ConfigLoader:
     """Configuration loader class."""
-    
+
     @staticmethod
-    def load(path: str) -> Dict[str, Any]:
+    def load(path: str) -> dict[str, Any]:
         """Load and validate configuration from YAML file."""
         return load_config(path)
-    
+
     @staticmethod
     def validate(cfg: dict) -> None:
         """Validate configuration structure and required fields."""

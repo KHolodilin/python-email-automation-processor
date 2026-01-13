@@ -4,19 +4,27 @@ Email Processor Package
 Main package for email attachment processing with IMAP support.
 """
 
-__version__ = "7.1.0"
-
 # Export main classes and functions for backward compatibility
-from email_processor.processor.email_processor import EmailProcessor
-from email_processor.config.loader import ConfigLoader, load_config, validate_config
-from email_processor.imap.auth import IMAPAuth, get_imap_password, clear_passwords
-from email_processor.imap.client import imap_connect
-from email_processor.imap.archive import archive_message
-from email_processor.logging.setup import setup_logging, get_logger
-from email_processor.config.constants import KEYRING_SERVICE_NAME, CONFIG_FILE, MAX_ATTACHMENT_SIZE
-
 # Import version
 from email_processor.__version__ import __version__
+from email_processor.config.constants import CONFIG_FILE, KEYRING_SERVICE_NAME, MAX_ATTACHMENT_SIZE
+from email_processor.config.loader import ConfigLoader, load_config, validate_config
+from email_processor.imap.archive import archive_message
+from email_processor.imap.auth import IMAPAuth, clear_passwords, get_imap_password
+from email_processor.imap.client import imap_connect
+from email_processor.logging.setup import get_logger, setup_logging
+from email_processor.processor.email_processor import EmailProcessor
+from email_processor.utils.context import (
+    clear_context,
+    generate_correlation_id,
+    generate_request_id,
+    get_context_dict,
+    get_correlation_id,
+    get_request_id,
+    set_correlation_id,
+    set_request_id,
+)
+
 
 # Legacy function wrapper for backward compatibility
 def download_attachments(config, dry_run=False):
@@ -24,21 +32,30 @@ def download_attachments(config, dry_run=False):
     processor = EmailProcessor(config)
     processor.process(dry_run=dry_run)
 
+
 __all__ = [
-    "EmailProcessor",
-    "ConfigLoader",
-    "load_config",
-    "validate_config",
-    "IMAPAuth",
-    "get_imap_password",
-    "clear_passwords",
-    "imap_connect",
-    "archive_message",
-    "setup_logging",
-    "get_logger",
-    "KEYRING_SERVICE_NAME",
     "CONFIG_FILE",
+    "KEYRING_SERVICE_NAME",
     "MAX_ATTACHMENT_SIZE",
-    "download_attachments",  # Legacy
+    "ConfigLoader",
+    "EmailProcessor",
+    "IMAPAuth",
     "__version__",
+    "archive_message",
+    "clear_context",
+    "clear_passwords",
+    "download_attachments",  # Legacy
+    "generate_correlation_id",
+    "generate_request_id",
+    "get_context_dict",
+    "get_correlation_id",
+    "get_imap_password",
+    "get_logger",
+    "get_request_id",
+    "imap_connect",
+    "load_config",
+    "set_correlation_id",
+    "set_request_id",
+    "setup_logging",
+    "validate_config",
 ]

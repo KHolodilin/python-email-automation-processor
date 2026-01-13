@@ -112,7 +112,7 @@ This command:
 
 ```
 Do you really want to delete saved passwords? [y/N]:
-```  
+```
 
 3. If user answers `y`:
   - password `email-vkh-processor / <user>` is removed from keyring
@@ -121,7 +121,7 @@ Do you really want to delete saved passwords? [y/N]:
 
 ```
 Done. Deleted entries: 1
-```  
+```
 
 5. On next normal mode run, the script will prompt for a new password.
 
@@ -254,6 +254,31 @@ pip install -e .
 email-processor
 ```
 
+## 🛠️ Development Setup
+
+For development, install additional tools:
+
+```bash
+pip install ruff mypy types-PyYAML
+```
+
+### Code Quality Tools
+
+- **Ruff**: Fast linter and formatter (replaces Black)
+  ```bash
+  ruff check .          # Check for issues
+  ruff check --fix .    # Auto-fix issues
+  ruff format .         # Format code
+  ruff format --check . # Check formatting
+  ```
+
+- **MyPy**: Type checker
+  ```bash
+  mypy email_processor  # Type check
+  ```
+
+See `CONTRIBUTING.md` for detailed development guidelines.
+
 ---
 
 # 🔧 Configuration Options
@@ -352,4 +377,4 @@ email_processor/
 
 See `ARCHITECTURE_PROPOSAL.md` for detailed architecture documentation.
 
-# 📚 Additional Documentation- **Testing Guide**: See `README_TESTS.md` 
+# 📚 Additional Documentation- **Testing Guide**: See `README_TESTS.md`

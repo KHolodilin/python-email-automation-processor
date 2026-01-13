@@ -1,25 +1,23 @@
 """Tests for email processor module."""
 
-import unittest
-import tempfile
 import shutil
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-import imaplib
-import email.message
+import tempfile
+import unittest
 from email import message_from_bytes
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
+from email_processor.logging.setup import setup_logging
 from email_processor.processor.email_processor import (
     EmailProcessor,
     ProcessingResult,
     get_start_date,
 )
-from email_processor.logging.setup import setup_logging
 
 
 class TestGetStartDate(unittest.TestCase):
     """Tests for get_start_date function."""
-    
+
     def test_get_start_date(self):
         """Test get_start_date function."""
         days_back = 5
@@ -31,12 +29,12 @@ class TestGetStartDate(unittest.TestCase):
 
 class TestEmailProcessor(unittest.TestCase):
     """Tests for EmailProcessor class."""
-    
+
     def setUp(self):
         """Setup test fixtures."""
         setup_logging({"level": "INFO", "format": "console"})
         self.temp_dir = tempfile.mkdtemp()
-        
+
         self.config = {
             "imap": {
                 "server": "imap.example.com",
@@ -64,11 +62,11 @@ class TestEmailProcessor(unittest.TestCase):
                 ".*invoice.*": "invoices",
             },
         }
-    
+
     def tearDown(self):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
+
     def test_email_processor_init(self):
         """Test EmailProcessor initialization."""
         processor = EmailProcessor(self.config)
@@ -77,17 +75,17 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertIsNotNone(processor.filter)
         self.assertIsNotNone(processor.attachment_handler)
         self.assertIsNotNone(processor.uid_storage)
-    
+
     def test_email_processor_init_logging_fallback(self):
         """Test EmailProcessor initialization with old logging config format."""
         config = self.config.copy()
         del config["logging"]
         config["processing"]["log_level"] = "DEBUG"
         config["processing"]["log_file"] = None
-        
+
         processor = EmailProcessor(config)
         self.assertIsNotNone(processor.logger)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_no_emails(self, mock_imap_connect, mock_get_password):
@@ -97,52 +95,52 @@ class TestEmailProcessor(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("OK", [b""])  # No messages
         mock_imap_connect.return_value = mock_mail
-        
+
         processor = EmailProcessor(self.config)
         result = processor.process(dry_run=False)
-        
+
         self.assertEqual(result.processed, 0)
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     def test_process_password_error(self, mock_get_password):
         """Test processing with password error."""
         mock_get_password.side_effect = ValueError("Password not entered")
-        
+
         processor = EmailProcessor(self.config)
         result = processor.process(dry_run=False)
-        
+
         self.assertEqual(result.processed, 0)
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     def test_process_password_unexpected_error(self, mock_get_password):
         """Test processing with unexpected password error."""
         mock_get_password.side_effect = Exception("Unexpected error")
-        
+
         processor = EmailProcessor(self.config)
         result = processor.process(dry_run=False)
-        
+
         self.assertEqual(result.processed, 0)
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_connection_error(self, mock_imap_connect, mock_get_password):
         """Test processing with connection error."""
         mock_get_password.return_value = "password"
         mock_imap_connect.side_effect = ConnectionError("Failed to connect")
-        
+
         processor = EmailProcessor(self.config)
         result = processor.process(dry_run=False)
-        
+
         self.assertEqual(result.processed, 0)
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_inbox_select_failed(self, mock_imap_connect, mock_get_password):
@@ -151,14 +149,14 @@ class TestEmailProcessor(unittest.TestCase):
         mock_mail = MagicMock()
         mock_mail.select.return_value = ("NO", [b"Select failed"])
         mock_imap_connect.return_value = mock_mail
-        
+
         processor = EmailProcessor(self.config)
         result = processor.process(dry_run=False)
-        
+
         self.assertEqual(result.processed, 0)
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_search_error(self, mock_imap_connect, mock_get_password):
@@ -168,14 +166,14 @@ class TestEmailProcessor(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("NO", [b"Search failed"])
         mock_imap_connect.return_value = mock_mail
-        
+
         processor = EmailProcessor(self.config)
         result = processor.process(dry_run=False)
-        
+
         self.assertEqual(result.processed, 0)
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_dry_run(self, mock_imap_connect, mock_get_password):
@@ -185,14 +183,14 @@ class TestEmailProcessor(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("OK", [b""])  # No messages
         mock_imap_connect.return_value = mock_mail
-        
+
         processor = EmailProcessor(self.config)
         result = processor.process(dry_run=True)
-        
+
         self.assertEqual(result.processed, 0)
         # Should complete without errors
         self.assertIsInstance(result, ProcessingResult)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_cleanup_error(self, mock_imap_connect, mock_get_password):
@@ -202,8 +200,11 @@ class TestEmailProcessor(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("OK", [b""])
         mock_imap_connect.return_value = mock_mail
-        
-        with patch("email_processor.processor.email_processor.cleanup_old_processed_days", side_effect=Exception("Cleanup error")):
+
+        with patch(
+            "email_processor.processor.email_processor.cleanup_old_processed_days",
+            side_effect=Exception("Cleanup error"),
+        ):
             processor = EmailProcessor(self.config)
             result = processor.process(dry_run=False)
             # Should continue despite cleanup error
@@ -212,12 +213,12 @@ class TestEmailProcessor(unittest.TestCase):
 
 class TestProcessEmail(unittest.TestCase):
     """Tests for _process_email method."""
-    
+
     def setUp(self):
         """Setup test fixtures."""
         setup_logging({"level": "INFO", "format": "console"})
         self.temp_dir = tempfile.mkdtemp()
-        
+
         self.config = {
             "imap": {
                 "server": "imap.example.com",
@@ -241,27 +242,27 @@ class TestProcessEmail(unittest.TestCase):
             },
         }
         self.processor = EmailProcessor(self.config)
-    
+
     def tearDown(self):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
+
     def test_process_email_uid_fetch_failed(self):
         """Test _process_email when UID fetch fails."""
         mock_mail = MagicMock()
         mock_mail.fetch.return_value = ("NO", None)
-        
+
         result = self.processor._process_email(mock_mail, b"1", {}, False)
         self.assertEqual(result, "skipped")
-    
+
     def test_process_email_uid_extraction_failed(self):
         """Test _process_email when UID extraction fails."""
         mock_mail = MagicMock()
         mock_mail.fetch.return_value = ("OK", [(b"No UID here", None)])
-        
+
         result = self.processor._process_email(mock_mail, b"1", {}, False)
         self.assertEqual(result, "skipped")
-    
+
     def test_process_email_header_fetch_failed(self):
         """Test _process_email when header fetch fails."""
         mock_mail = MagicMock()
@@ -269,41 +270,45 @@ class TestProcessEmail(unittest.TestCase):
             ("OK", [(b"UID 123 SIZE 1000", None)]),  # UID fetch succeeds
             ("NO", None),  # Header fetch fails
         ]
-        
+
         result = self.processor._process_email(mock_mail, b"1", {}, False)
         self.assertEqual(result, "skipped")
-    
+
     def test_process_email_already_processed(self):
         """Test _process_email when email already processed."""
         from email_processor.storage.uid_storage import save_processed_uid_for_day
-        
+
         mock_mail = MagicMock()
-        header_bytes = b"From: sender@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        header_bytes = (
+            b"From: sender@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
         ]
-        
+
         # Mark as processed
         day_str = "2024-01-01"
         cache = {}
         save_processed_uid_for_day(self.processor.processed_dir, day_str, "123", cache)
-        
+
         result = self.processor._process_email(mock_mail, b"1", cache, False)
         self.assertEqual(result, "skipped")
-    
+
     def test_process_email_sender_not_allowed(self):
         """Test _process_email when sender is not allowed."""
         mock_mail = MagicMock()
-        header_bytes = b"From: other@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        header_bytes = (
+            b"From: other@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
         ]
-        
+
         result = self.processor._process_email(mock_mail, b"1", {}, False)
         self.assertEqual(result, "skipped")
-    
+
     def test_process_email_message_fetch_failed(self):
         """Test _process_email when message fetch fails."""
         mock_mail = MagicMock()
@@ -313,55 +318,54 @@ class TestProcessEmail(unittest.TestCase):
             ("OK", [(None, header_bytes)]),
             ("NO", None),  # Message fetch fails
         ]
-        
+
         result = self.processor._process_email(mock_mail, b"1", {}, False)
         self.assertEqual(result, "skipped")
-    
+
     def test_process_email_no_attachments(self):
         """Test _process_email when email has no attachments."""
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
         msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody text"
         msg = message_from_bytes(msg_bytes)
-        
+
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
             ("OK", [(None, msg_bytes)]),
         ]
-        
+
         result = self.processor._process_email(mock_mail, b"1", {}, False)
         self.assertEqual(result, "skipped")
-    
+
     def test_process_email_with_attachment(self):
         """Test _process_email with attachment."""
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
-        
+
         # Create message with attachment using MIMEMultipart
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
         from email.mime.base import MIMEBase
-        
+        from email.mime.multipart import MIMEMultipart
+
         msg = MIMEMultipart()
         msg["From"] = "sender@example.com"
         msg["Subject"] = "Invoice"
         msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
-        
+
         # Add attachment
-        part = MIMEBase('application', 'octet-stream')
+        part = MIMEBase("application", "octet-stream")
         part.set_payload(b"test content")
-        part.add_header('Content-Disposition', 'attachment', filename="test.pdf")
+        part.add_header("Content-Disposition", "attachment", filename="test.pdf")
         msg.attach(part)
-        
+
         msg_bytes = msg.as_bytes()
-        
+
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
             ("OK", [(None, msg_bytes)]),
         ]
-        
+
         result = self.processor._process_email(mock_mail, b"1", {}, False)
         # Should process successfully
         self.assertIn(result, ["processed", "skipped", "error"])
@@ -369,14 +373,11 @@ class TestProcessEmail(unittest.TestCase):
 
 class TestProcessingResult(unittest.TestCase):
     """Tests for ProcessingResult dataclass."""
-    
+
     def test_processing_result(self):
         """Test ProcessingResult dataclass."""
         result = ProcessingResult(
-            processed=5,
-            skipped=3,
-            errors=1,
-            file_stats={".pdf": 3, ".doc": 2}
+            processed=5, skipped=3, errors=1, file_stats={".pdf": 3, ".doc": 2}
         )
         self.assertEqual(result.processed, 5)
         self.assertEqual(result.skipped, 3)
@@ -386,12 +387,12 @@ class TestProcessingResult(unittest.TestCase):
 
 class TestProgressBar(unittest.TestCase):
     """Tests for progress bar functionality."""
-    
+
     def setUp(self):
         """Setup test fixtures."""
         setup_logging({"level": "INFO", "format": "console"})
         self.temp_dir = tempfile.mkdtemp()
-        
+
         self.config = {
             "imap": {
                 "server": "imap.example.com",
@@ -412,11 +413,11 @@ class TestProgressBar(unittest.TestCase):
             "allowed_senders": ["sender@example.com"],
             "topic_mapping": {},
         }
-    
+
     def tearDown(self):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_with_progress_bar(self, mock_imap_connect, mock_get_password):
@@ -428,10 +429,10 @@ class TestProgressBar(unittest.TestCase):
         mock_mail.fetch.return_value = ("OK", [(b"UID 123", None)])
         mock_mail.logout.return_value = ("OK", [])
         mock_imap_connect.return_value = mock_mail
-        
+
         config = self.config.copy()
         config["processing"]["show_progress"] = True
-        
+
         processor = EmailProcessor(config)
         # Mock tqdm to avoid actual progress bar in tests
         with patch("email_processor.processor.email_processor.tqdm") as mock_tqdm:
@@ -440,14 +441,14 @@ class TestProgressBar(unittest.TestCase):
             mock_pbar.set_postfix = MagicMock()
             mock_pbar.close = MagicMock()
             mock_tqdm.return_value = mock_pbar
-            
+
             result = processor.process(dry_run=False)
-            
+
             # Verify tqdm was called if progress is enabled
             if processor.show_progress:
                 mock_tqdm.assert_called_once()
                 mock_pbar.close.assert_called_once()
-    
+
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_without_progress_bar(self, mock_imap_connect, mock_get_password):
@@ -459,18 +460,18 @@ class TestProgressBar(unittest.TestCase):
         mock_mail.fetch.return_value = ("OK", [(b"UID 123", None)])
         mock_mail.logout.return_value = ("OK", [])
         mock_imap_connect.return_value = mock_mail
-        
+
         config = self.config.copy()
         config["processing"]["show_progress"] = False
-        
+
         processor = EmailProcessor(config)
         # Mock tqdm to verify it's not called
         with patch("email_processor.processor.email_processor.tqdm") as mock_tqdm:
             result = processor.process(dry_run=False)
-            
+
             # Verify tqdm was not called when show_progress is False
             mock_tqdm.assert_not_called()
-    
+
     def test_progress_bar_default(self):
         """Test that progress bar default is set correctly."""
         # Test with show_progress not specified
@@ -478,12 +479,12 @@ class TestProgressBar(unittest.TestCase):
         processor = EmailProcessor(config)
         # Default should be a boolean (True if tqdm available, False otherwise)
         self.assertIsInstance(processor.show_progress, bool)
-        
+
         # Test with show_progress explicitly set
         config["processing"]["show_progress"] = False
         processor2 = EmailProcessor(config)
         self.assertFalse(processor2.show_progress)
-        
+
         config["processing"]["show_progress"] = True
         processor3 = EmailProcessor(config)
         self.assertTrue(processor3.show_progress)
