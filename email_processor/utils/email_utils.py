@@ -1,10 +1,11 @@
 """Email utility functions."""
 
+import email.message
+import email.utils
 from datetime import datetime
-from typing import Optional
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
-import email.message
+from typing import Optional
 
 from email_processor.logging.setup import get_logger
 
@@ -31,38 +32,40 @@ def parse_email_date(date_raw: str) -> Optional[datetime]:
     try:
         dt = parsedate_to_datetime(date_raw)
         if dt is None:
-            logger.debug("date_parse_failed", date_raw=date_raw, reason="parsedate_to_datetime returned None")
+            logger.debug(
+                "date_parse_failed", date_raw=date_raw, reason="parsedate_to_datetime returned None"
+            )
             return None
         if dt.tzinfo is not None:
             dt = dt.astimezone().replace(tzinfo=None)
-        return dt
     except (ValueError, TypeError) as e:
         logger.debug("date_parse_error", date_raw=date_raw, error=str(e))
         return None
     except Exception as e:
         logger.debug("date_parse_unexpected_error", date_raw=date_raw, error=str(e))
         return None
+    else:
+        return dt
 
 
 class EmailUtils:
     """Email utility class."""
-    
+
     @staticmethod
     def decode_mime_header(value: Optional[str]) -> str:
         """Decode MIME header value."""
         return decode_mime_header_value(value)
-    
+
     @staticmethod
     def parse_date(date_raw: str) -> Optional[datetime]:
         """Parse email date header with improved error handling."""
         return parse_email_date(date_raw)
-    
+
     @staticmethod
     def extract_sender(msg: email.message.Message) -> str:
         """Extract sender email from message."""
-        import email.utils
         return email.utils.parseaddr(msg.get("From", ""))[1]
-    
+
     @staticmethod
     def extract_subject(msg: email.message.Message) -> str:
         """Extract subject from message."""

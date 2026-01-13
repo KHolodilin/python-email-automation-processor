@@ -1,10 +1,11 @@
 """IMAP authentication with keyring support."""
 
 import getpass
+
 import keyring
 
-from email_processor.logging.setup import get_logger
 from email_processor.config.constants import KEYRING_SERVICE_NAME
+from email_processor.logging.setup import get_logger
 
 
 def get_imap_password(imap_user: str) -> str:
@@ -13,7 +14,7 @@ def get_imap_password(imap_user: str) -> str:
     password = keyring.get_password(KEYRING_SERVICE_NAME, imap_user)
     if password:
         logger.info("password_retrieved", user=imap_user, service=KEYRING_SERVICE_NAME)
-        return password
+        return password  # type: ignore[no-any-return]
 
     logger.info("password_not_found", user=imap_user)
     pw = getpass.getpass(f"Enter IMAP password for {imap_user}: ")
@@ -70,12 +71,12 @@ def clear_passwords(service: str, primary_user: str) -> None:
 
 class IMAPAuth:
     """IMAP authentication class."""
-    
+
     @staticmethod
     def get_password(user: str) -> str:
         """Get IMAP password from keyring or prompt user."""
         return get_imap_password(user)
-    
+
     @staticmethod
     def clear_passwords(service: str, user: str) -> None:
         """Clear saved passwords from keyring."""

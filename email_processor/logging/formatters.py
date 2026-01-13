@@ -1,25 +1,25 @@
 """Custom formatters for structlog file logging."""
 
 import json
-from datetime import datetime
-from typing import Any
 import logging
+from datetime import datetime
+
 import structlog
 
 
 class StructlogFileFormatter(logging.Formatter):
     """Custom formatter for structlog file output."""
-    
+
     def __init__(self, file_format: str = "json"):
         """
         Initialize formatter.
-        
+
         Args:
             file_format: Format for file output ("json" or "console")
         """
         super().__init__()
         self.file_format = file_format
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """Format log record for file output."""
         # Extract structlog event dict if present

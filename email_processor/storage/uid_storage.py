@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Set, Dict
 
 from email_processor.logging.setup import get_logger
 from email_processor.storage.file_manager import validate_path
@@ -19,15 +18,15 @@ def get_processed_file_path(root_dir: str, day_str: str) -> Path:
     root_path = Path(root_dir)
     filename = f"{day_str}.txt"
     file_path = root_path / filename
-    
+
     # Validate path to prevent path traversal
     if not validate_path(root_path, file_path):
         raise ValueError(f"Invalid path detected: {file_path}")
-    
+
     return file_path
 
 
-def load_processed_for_day(root_dir: str, day_str: str, cache: Dict[str, Set[str]]) -> Set[str]:
+def load_processed_for_day(root_dir: str, day_str: str, cache: dict[str, set[str]]) -> set[str]:
     """Load processed UIDs for a specific day with error handling."""
     if day_str in cache:
         return cache[day_str]
@@ -41,7 +40,7 @@ def load_processed_for_day(root_dir: str, day_str: str, cache: Dict[str, Set[str
     try:
         with path.open("r", encoding="utf-8") as f:
             uids = {line.strip() for line in f if line.strip()}
-    except IOError as e:
+    except OSError as e:
         logger.error("processed_uids_read_io_error", path=str(path), error=str(e))
         cache[day_str] = set()
         return cache[day_str]
@@ -55,7 +54,9 @@ def load_processed_for_day(root_dir: str, day_str: str, cache: Dict[str, Set[str
     return cache[day_str]
 
 
-def save_processed_uid_for_day(root_dir: str, day_str: str, uid: str, cache: Dict[str, Set[str]]) -> None:
+def save_processed_uid_for_day(
+    root_dir: str, day_str: str, uid: str, cache: dict[str, set[str]]
+) -> None:
     """Save processed UID for a specific day with error handling."""
     uids = load_processed_for_day(root_dir, day_str, cache)
     if uid in uids:
@@ -68,7 +69,7 @@ def save_processed_uid_for_day(root_dir: str, day_str: str, uid: str, cache: Dic
             f.write(uid + "\n")
         uids.add(uid)
         logger.debug("processed_uid_added", path=str(path))
-    except IOError as e:
+    except OSError as e:
         logger.error("processed_uid_save_io_error", path=str(path), error=str(e))
         raise
     except Exception as e:
@@ -90,13 +91,13 @@ def cleanup_old_processed_days(root_dir: str, keep_days: int) -> None:
             continue
         if file_path.suffix != ".txt":
             continue
-        
+
         # Validate path to prevent path traversal
         logger = get_logger()
         if not validate_path(root_path, file_path):
             logger.warning("invalid_path_skipped", path=str(file_path))
             continue
-        
+
         try:
             day = datetime.strptime(file_path.stem, "%Y-%m-%d").date()
         except ValueError:
@@ -113,29 +114,29 @@ def cleanup_old_processed_days(root_dir: str, keep_days: int) -> None:
 
 class UIDStorage:
     """UID storage class for tracking processed emails."""
-    
+
     def __init__(self, root_dir: str):
         """
         Initialize UID storage.
-        
+
         Args:
             root_dir: Root directory for storing processed UID files
         """
         self.root_dir = root_dir
-        self.cache: Dict[str, Set[str]] = {}
-    
-    def load_for_day(self, day_str: str) -> Set[str]:
+        self.cache: dict[str, set[str]] = {}
+
+    def load_for_day(self, day_str: str) -> set[str]:
         """Load processed UIDs for a specific day."""
         return load_processed_for_day(self.root_dir, day_str, self.cache)
-    
+
     def save_uid(self, day_str: str, uid: str) -> None:
         """Save processed UID for a specific day."""
         save_processed_uid_for_day(self.root_dir, day_str, uid, self.cache)
-    
+
     def cleanup_old(self, keep_days: int) -> None:
         """Clean up old processed UID files."""
         cleanup_old_processed_days(self.root_dir, keep_days)
-    
+
     def is_processed(self, day_str: str, uid: str) -> bool:
         """Check if UID is already processed for a specific day."""
         uids = self.load_for_day(day_str)

@@ -1,9 +1,9 @@
 """Logging module for email processor."""
 
-from email_processor.logging.setup import LoggingManager, setup_logging, get_logger
+from email_processor.logging.setup import LoggingManager, get_logger, setup_logging
 
 __all__ = [
     "LoggingManager",
-    "setup_logging",
     "get_logger",
+    "setup_logging",
 ]

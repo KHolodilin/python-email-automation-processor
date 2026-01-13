@@ -1,13 +1,14 @@
 """Script to run all tests with coverage."""
 
-import sys
 import subprocess
+import sys
 
 if __name__ == "__main__":
     # Run pytest with coverage
     cmd = [
         sys.executable,
-        "-m", "pytest",
+        "-m",
+        "pytest",
         "tests/",
         "-v",
         "--cov=email_processor",
@@ -15,6 +16,6 @@ if __name__ == "__main__":
         "--cov-report=html",
         "--cov-fail-under=90",
     ]
-    
-    result = subprocess.run(cmd)
+
+    result = subprocess.run(cmd, check=False)
     sys.exit(result.returncode)

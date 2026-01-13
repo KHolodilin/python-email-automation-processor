@@ -1,16 +1,16 @@
 """Main entry point for email_processor package."""
 
 import argparse
-import sys
 import logging
+import sys
 
 from email_processor import (
+    CONFIG_FILE,
+    KEYRING_SERVICE_NAME,
     ConfigLoader,
     EmailProcessor,
-    clear_passwords,
-    KEYRING_SERVICE_NAME,
-    CONFIG_FILE,
     __version__,
+    clear_passwords,
 )
 
 
@@ -19,11 +19,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Email Attachment Processor - Downloads attachments from IMAP, organizes by topic, and archives messages.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"Version {__version__}"
+        epilog=f"Version {__version__}",
     )
-    parser.add_argument("--clear-passwords", action="store_true", help="Clear saved passwords from keyring")
-    parser.add_argument("--dry-run", action="store_true", help="Simulate processing without downloading or archiving")
-    parser.add_argument("--dry-run-no-connect", action="store_true", help="Dry-run mode with mock IMAP server (no real connection, uses simulated data)")
+    parser.add_argument(
+        "--clear-passwords", action="store_true", help="Clear saved passwords from keyring"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate processing without downloading or archiving",
+    )
+    parser.add_argument(
+        "--dry-run-no-connect",
+        action="store_true",
+        help="Dry-run mode with mock IMAP server (no real connection, uses simulated data)",
+    )
     parser.add_argument("--version", action="version", version=f"Email Processor {__version__}")
     args = parser.parse_args()
 
@@ -53,12 +63,14 @@ def main() -> int:
             dry_run = args.dry_run or args.dry_run_no_connect
             mock_mode = args.dry_run_no_connect
             result = processor.process(dry_run=dry_run, mock_mode=mock_mode)
-            print(f"Processed: {result.processed}, Skipped: {result.skipped}, Errors: {result.errors}")
+            print(
+                f"Processed: {result.processed}, Skipped: {result.skipped}, Errors: {result.errors}"
+            )
         except KeyboardInterrupt:
             logging.info("Interrupted by user")
             return 0
-        except Exception as e:
-            logging.exception("Fatal error during email processing: %s", e)
+        except Exception:
+            logging.exception("Fatal error during email processing")
             return 1
 
     return 0

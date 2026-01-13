@@ -134,10 +134,10 @@ def test_my_function(self):
     """Test description."""
     # Arrange
     input_data = "test"
-    
+
     # Act
     result = my_function(input_data)
-    
+
     # Assert
     self.assertEqual(result, "expected")
 ```
