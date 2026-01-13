@@ -252,6 +252,8 @@ python -m email_processor
 # Or install and use as command
 pip install -e .
 email-processor
+
+# To build distributable package for pip install, see BUILD.md
 ```
 
 ## 🛠️ Development Setup
@@ -377,4 +379,7 @@ email_processor/
 
 See `ARCHITECTURE_PROPOSAL.md` for detailed architecture documentation.
 
-# 📚 Additional Documentation- **Testing Guide**: See `README_TESTS.md`
+# 📚 Additional Documentation
+
+- **Testing Guide**: See `README_TESTS.md`
+- **Building and Distribution**: See `BUILD.md` (how to build package for `pip install`)
