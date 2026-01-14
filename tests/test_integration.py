@@ -299,7 +299,6 @@ class TestDownloadAttachments(unittest.TestCase):
             },
             "processing": {
                 "start_days_back": 5,
-                "download_dir": self.download_dir,
                 "archive_folder": "INBOX/Processed",
                 "processed_dir": self.processed_dir,
                 "keep_processed_days": 0,
@@ -314,7 +313,8 @@ class TestDownloadAttachments(unittest.TestCase):
             },
             "allowed_senders": ["sender@example.com"],
             "topic_mapping": {
-                ".*Test.*": "test_folder",
+                ".*Test.*": os.path.join(self.download_dir, "test_folder"),
+                ".*": os.path.join(self.download_dir, "default"),
             },
         }
 
@@ -333,17 +333,12 @@ class TestDownloadAttachments(unittest.TestCase):
         download_attachments(self.config, dry_run=False)
 
         # Check that attachment was downloaded
-        # Subject is "Test Subject" which matches ".*Test.*" -> "test_folder"
+        # Subject is "Test Subject" which matches ".*Test.*" -> test_folder path
         test_folder = Path(self.download_dir) / "test_folder"
-        if test_folder.exists():
-            # Check for attachment file (may have _01 suffix if duplicate)
-            pdf_files = list(test_folder.glob("test*.pdf"))
-            self.assertGreater(len(pdf_files), 0, "No PDF files found in test_folder")
-        else:
-            # If folder doesn't exist, check if it was created with normalized name
-            # Subject "Test Subject" -> normalized folder name
-            normalized_folders = [d for d in Path(self.download_dir).iterdir() if d.is_dir()]
-            self.assertGreater(len(normalized_folders), 0, "No download folders created")
+        self.assertTrue(test_folder.exists(), f"Test folder {test_folder} should exist")
+        # Check for attachment file (may have _01 suffix if duplicate)
+        pdf_files = list(test_folder.glob("test*.pdf"))
+        self.assertGreater(len(pdf_files), 0, "No PDF files found in test_folder")
 
         # Check processed UID was saved
         day_str = datetime.now().strftime("%Y-%m-%d")
@@ -383,6 +378,9 @@ class TestDownloadAttachments(unittest.TestCase):
             files = list(test_folder.iterdir())
             # Only message 1 (from allowed sender) should be processed
             self.assertLessEqual(len(files), 1)
+        else:
+            # Folder might not exist if no messages were processed
+            pass
 
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.imap.client.imaplib.IMAP4_SSL")

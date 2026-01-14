@@ -22,23 +22,25 @@ class TestFolderResolver(unittest.TestCase):
         topic_mapping = {
             ".*invoice.*": "invoices",
             ".*report.*": "reports",
+            ".*": "default",  # Last rule is used as default
         }
         # Matching pattern
         result = resolve_custom_folder("Invoice #123", topic_mapping)
         self.assertEqual(result, "invoices")
-        # Non-matching
+        # Non-matching - uses last rule as default
         result = resolve_custom_folder("Random subject", topic_mapping)
-        self.assertIsNone(result)
+        self.assertEqual(result, "default")
 
     def test_resolve_custom_folder_empty_mapping(self):
-        """Test custom folder resolution with empty mapping."""
-        result = resolve_custom_folder("Test subject", {})
-        self.assertIsNone(result)
+        """Test custom folder resolution with empty mapping raises ValueError."""
+        with self.assertRaises(ValueError):
+            resolve_custom_folder("Test subject", {})
 
     def test_resolve_custom_folder_with_logging(self):
         """Test custom folder resolution logs match."""
         topic_mapping = {
             ".*invoice.*": "invoices",
+            ".*": "default",
         }
         # Setup logging for structlog
         setup_logging({"level": "INFO", "format": "console"})
@@ -48,7 +50,7 @@ class TestFolderResolver(unittest.TestCase):
             mock_get_logger.return_value = mock_logger
             result = resolve_custom_folder("Invoice #123", topic_mapping)
             self.assertEqual(result, "invoices")
-            # Verify logger was called
+            # Verify logger was called (either info for match or debug for default)
             mock_logger.info.assert_called()
             call_args = mock_logger.info.call_args
             self.assertIn("subject_matched", str(call_args))
@@ -69,13 +71,14 @@ class TestFolderResolver(unittest.TestCase):
         """Test FolderResolver class."""
         topic_mapping = {
             ".*invoice.*": "invoices",
+            ".*": "default",  # Last rule is used as default
         }
         resolver = FolderResolver(topic_mapping)
         result = resolver.resolve("Invoice #123")
         self.assertEqual(result, "invoices")
 
         result = resolver.resolve("Random subject")
-        self.assertIsNone(result)
+        self.assertEqual(result, "default")  # Uses last rule as default
 
     def test_folder_resolver_compile_pattern(self):
         """Test FolderResolver._compile_pattern method."""

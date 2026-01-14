@@ -1,7 +1,5 @@
 """Email filtering by senders and topics."""
 
-from typing import Optional
-
 from email_processor.utils.folder_resolver import resolve_custom_folder
 
 
@@ -24,6 +22,6 @@ class EmailFilter:
         """Check if sender is allowed."""
         return sender.lower() in self.allowed_lower
 
-    def resolve_folder(self, subject: str) -> Optional[str]:
+    def resolve_folder(self, subject: str) -> str:
         """Resolve folder based on subject and topic mapping."""
         return resolve_custom_folder(subject, self.topic_mapping)

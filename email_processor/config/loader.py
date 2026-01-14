@@ -75,20 +75,25 @@ def validate_config(cfg: dict) -> None:
             # Use print for validation warnings before logging is set up
             print("Warning: 'allowed_senders' is empty - no emails will be processed")
 
-    # Validate topic_mapping
-    if "topic_mapping" in cfg:
-        if not isinstance(cfg["topic_mapping"], dict):
-            errors.append("'topic_mapping' must be a dictionary")
-        else:
-            for pattern, folder in cfg["topic_mapping"].items():
-                try:
-                    re.compile(pattern)
-                except re.error as e:
-                    errors.append(f"Invalid regex pattern in topic_mapping: '{pattern}' - {e}")
-                if not isinstance(folder, str) or not folder:
-                    errors.append(
-                        f"Invalid folder name for pattern '{pattern}': must be non-empty string"
-                    )
+    # Validate topic_mapping (required, must have at least one rule)
+    if "topic_mapping" not in cfg:
+        errors.append("Missing required section: 'topic_mapping'")
+    elif not isinstance(cfg["topic_mapping"], dict):
+        errors.append("'topic_mapping' must be a dictionary")
+    elif len(cfg["topic_mapping"]) == 0:
+        errors.append(
+            "'topic_mapping' must contain at least one rule (the last one is used as default)"
+        )
+    else:
+        for pattern, folder in cfg["topic_mapping"].items():
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                errors.append(f"Invalid regex pattern in topic_mapping: '{pattern}' - {e}")
+            if not isinstance(folder, str) or not folder:
+                errors.append(
+                    f"Invalid folder name for pattern '{pattern}': must be non-empty string"
+                )
 
     if errors:
         error_msg = "Configuration validation failed:\n  - " + "\n  - ".join(errors)

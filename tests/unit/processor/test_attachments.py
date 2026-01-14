@@ -28,7 +28,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_validate_size(self):
         """Test AttachmentHandler.validate_size method."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
 
         self.assertTrue(handler.validate_size(1024))
         self.assertTrue(handler.validate_size(MAX_ATTACHMENT_SIZE))
@@ -36,7 +36,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_success(self):
         """Test successful attachment saving."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -56,7 +56,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_dry_run(self):
         """Test attachment saving in dry-run mode."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -73,7 +73,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_empty_filename(self):
         """Test attachment saving with empty filename."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -87,7 +87,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_no_payload(self):
         """Test attachment saving with no payload."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -101,7 +101,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_too_large(self):
         """Test attachment saving with file too large."""
-        handler = AttachmentHandler(self.download_dir, max_size=1024)
+        handler = AttachmentHandler(max_size=1024)
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -115,7 +115,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_io_error(self):
         """Test attachment saving with IO error."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -130,7 +130,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_unexpected_error(self):
         """Test attachment saving with unexpected error."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -145,7 +145,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_is_allowed_extension_no_filter(self):
         """Test extension filtering with no restrictions."""
-        handler = AttachmentHandler(self.download_dir)
+        handler = AttachmentHandler()
 
         self.assertTrue(handler.is_allowed_extension("test.pdf"))
         self.assertTrue(handler.is_allowed_extension("test.exe"))
@@ -153,7 +153,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_is_allowed_extension_allowed_list(self):
         """Test extension filtering with allowed list."""
-        handler = AttachmentHandler(self.download_dir, allowed_extensions=[".pdf", ".doc", ".docx"])
+        handler = AttachmentHandler(allowed_extensions=[".pdf", ".doc", ".docx"])
 
         self.assertTrue(handler.is_allowed_extension("test.pdf"))
         self.assertTrue(handler.is_allowed_extension("test.PDF"))  # Case insensitive
@@ -164,7 +164,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_is_allowed_extension_blocked_list(self):
         """Test extension filtering with blocked list."""
-        handler = AttachmentHandler(self.download_dir, blocked_extensions=[".exe", ".bat", ".sh"])
+        handler = AttachmentHandler(blocked_extensions=[".exe", ".bat", ".sh"])
 
         self.assertTrue(handler.is_allowed_extension("test.pdf"))
         self.assertTrue(handler.is_allowed_extension("test.doc"))
@@ -175,7 +175,6 @@ class TestAttachmentHandler(unittest.TestCase):
     def test_is_allowed_extension_both_lists(self):
         """Test extension filtering with both allowed and blocked lists."""
         handler = AttachmentHandler(
-            self.download_dir,
             allowed_extensions=[".pdf", ".doc", ".exe", ".bat"],
             blocked_extensions=[".exe", ".bat"],
         )
@@ -192,7 +191,6 @@ class TestAttachmentHandler(unittest.TestCase):
     def test_is_allowed_extension_without_dot(self):
         """Test extension filtering handles extensions without dot prefix."""
         handler = AttachmentHandler(
-            self.download_dir,
             allowed_extensions=["pdf", "doc", ".docx"],  # Mix of with and without dot
         )
 
@@ -203,7 +201,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_blocked_extension(self):
         """Test attachment saving with blocked extension."""
-        handler = AttachmentHandler(self.download_dir, blocked_extensions=[".exe", ".bat"])
+        handler = AttachmentHandler(blocked_extensions=[".exe", ".bat"])
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
@@ -220,7 +218,7 @@ class TestAttachmentHandler(unittest.TestCase):
 
     def test_save_attachment_allowed_extension_only(self):
         """Test attachment saving with only allowed extensions."""
-        handler = AttachmentHandler(self.download_dir, allowed_extensions=[".pdf", ".doc"])
+        handler = AttachmentHandler(allowed_extensions=[".pdf", ".doc"])
         target_folder = self.download_dir / "test_folder"
         target_folder.mkdir()
 
