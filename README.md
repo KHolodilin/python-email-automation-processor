@@ -178,10 +178,6 @@ imap:
 
 processing:
   start_days_back: 5
-  # Absolute paths are supported (Windows example):
-  download_dir: "C:\\Users\\YourName\\Downloads\\EmailAttachments"
-  # Or use relative path (relative to script directory):
-  # download_dir: "downloads"
   archive_folder: "INBOX/Processed"
   processed_dir: "C:\\Users\\YourName\\AppData\\EmailProcessor\\processed_uids"
   keep_processed_days: 180
@@ -209,12 +205,26 @@ topic_mapping:
   ".*Roadmap.*": "roadmap"
   "(Report).*": "reports"
   "(Invoice|Bill).*": "invoices"
-  "Request №\\d+": "applications"
+  ".*": "default"  # Last rule is used as default for unmatched emails
 ```
 
-**Note:** Both absolute and relative paths are supported for `download_dir` and `processed_dir`:
-- **Absolute paths**: `"C:\\Users\\Downloads"` (Windows) or `"/home/user/downloads"` (Linux/macOS)
-- **Relative paths**: `"downloads"` (relative to the script's working directory)
+**Note:**
+- All paths in `topic_mapping` can be either absolute or relative:
+  - **Absolute paths**: `"C:\\Documents\\Roadmaps"` (Windows) or `"/home/user/documents/reports"` (Linux/macOS)
+  - **Relative paths**: `"roadmap"` (relative to the script's working directory)
+- **The last rule in `topic_mapping` is used as default** for all emails that don't match any of the previous patterns
+- Both absolute and relative paths are supported for `processed_dir`:
+  - **Absolute paths**: `"C:\\Users\\AppData\\processed_uids"` (Windows) or `"/home/user/.cache/processed_uids"` (Linux/macOS)
+  - **Relative paths**: `"processed_uids"` (relative to the script's working directory)
+
+  Example with mixed paths:
+  ```yaml
+  topic_mapping:
+    ".*Roadmap.*": "C:\\Documents\\Roadmaps"  # Absolute path
+    "(Report).*": "reports"                     # Relative path
+    "(Invoice|Bill).*": "C:\\Finance\\Invoices" # Absolute path
+    ".*": "default"                             # Default folder (relative path)
+  ```
 
 ---
 
@@ -311,12 +321,10 @@ See `CONTRIBUTING.md` for detailed development guidelines.
 
 ## Processing Settings
 - `start_days_back`: How many days back to process emails (default: 5)
-- `download_dir`: Directory for downloaded attachments (default: "downloads")
-  - **Supports absolute paths**: `"C:\\Users\\Downloads"` or `"/home/user/downloads"`
-  - **Supports relative paths**: `"downloads"` (relative to script directory)
 - `archive_folder`: IMAP folder for archived emails (default: "INBOX/Processed")
 - `processed_dir`: Directory for processed UID files (default: "processed_uids")
-  - **Supports absolute and relative paths** (same as download_dir)
+  - **Supports absolute paths**: `"C:\\Users\\AppData\\processed_uids"` or `"/home/user/.cache/processed_uids"`
+  - **Supports relative paths**: `"processed_uids"` (relative to script directory)
 - `keep_processed_days`: Days to keep processed UID files (0 = keep forever, default: 0)
 - `archive_only_mapped`: Archive only emails matching topic_mapping (default: true)
 - `skip_non_allowed_as_processed`: Mark non-allowed senders as processed (default: true)
@@ -341,7 +349,10 @@ See `CONTRIBUTING.md` for detailed development guidelines.
 List of email addresses allowed to process. If empty, no emails will be processed.
 
 ## Topic Mapping
-Dictionary of regex patterns to folder names. Emails matching a pattern will be saved to the corresponding folder.
+Dictionary of regex patterns to folder paths. Emails matching a pattern will be saved to the corresponding folder.
+- **The last rule in `topic_mapping` is used as default** for all emails that don't match any of the previous patterns
+- All paths can be absolute (e.g., `"C:\\Documents\\Roadmaps"`) or relative (e.g., `"roadmap"`)
+- Patterns are checked in order, and the first match is used
 
 ---
 

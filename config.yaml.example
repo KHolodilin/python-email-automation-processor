@@ -9,7 +9,6 @@ imap:
 
 processing:
   start_days_back: 5
-  download_dir: "downloads"  # Can be absolute path like "C:\\Users\\Downloads" or relative like "downloads"
   archive_folder: "INBOX/Processed"
   processed_dir: "processed_uids"  # Can be absolute or relative path
   keep_processed_days: 180
@@ -38,4 +37,4 @@ topic_mapping:
   ".*roadmap.*": "roadmap"
   "(reports).*": "reports"
   "(invoice).*": "invoices"
-  "application\d+": "applications"
+  ".*": "default"  # Last rule is used as default for unmatched emails

@@ -307,3 +307,7 @@ htmlcov/
 .coverage.*
 .pytest_cache/
 /processed_uids
+/test_folder
+/processed_uids
+/test_downloads
+/logs
