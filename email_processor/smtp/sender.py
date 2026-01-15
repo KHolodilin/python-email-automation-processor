@@ -2,6 +2,7 @@
 
 import email.encoders
 import email.utils
+import re
 from datetime import datetime
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -22,8 +23,6 @@ def format_subject_template(template: str, context: dict[str, str]) -> str:
     Returns:
         Formatted subject string
     """
-    import re
-
     # Extract all variable names from template
     template_vars = set(re.findall(r"\{(\w+)\}", template))
     # Build context with all template variables, using empty string for missing ones

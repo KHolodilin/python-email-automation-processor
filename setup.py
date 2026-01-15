@@ -4,6 +4,7 @@ This file is kept for backward compatibility with older pip versions (Python 3.9
 All package metadata is defined in pyproject.toml.
 """
 
+import site
 from pathlib import Path
 from typing import Union
 
@@ -24,8 +25,6 @@ class DevelopCommand(develop):
             install_dir = getattr(install_cmd, "install_lib", None)
             if install_dir is None:
                 # Fallback to site-packages
-                import site
-
                 install_dir = site.getsitepackages()[0] if site.getsitepackages() else "."
 
         install_dir_path = Path(install_dir).resolve()

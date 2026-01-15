@@ -22,7 +22,10 @@ from email_processor import (
     __version__,
     clear_passwords,
 )
+from email_processor.imap.auth import get_imap_password
 from email_processor.logging.setup import get_logger, setup_logging
+from email_processor.smtp.sender import EmailSender
+from email_processor.storage.sent_files_storage import SentFilesStorage
 
 CONFIG_EXAMPLE = "config.yaml.example"
 
@@ -324,10 +327,6 @@ def _display_results_rich(result, console_instance: "Console") -> None:
 def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | None") -> int:
     """Handle SMTP sending commands."""
     from datetime import datetime
-
-    from email_processor.imap.auth import get_imap_password
-    from email_processor.smtp.sender import EmailSender
-    from email_processor.storage.sent_files_storage import SentFilesStorage
 
     # Check SMTP config
     smtp_cfg = cfg.get("smtp")
