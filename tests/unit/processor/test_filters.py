@@ -16,7 +16,7 @@ class TestEmailFilter(unittest.TestCase):
     def test_is_allowed_sender(self):
         """Test EmailFilter.is_allowed_sender method."""
         allowed_senders = ["sender1@example.com", "Sender2@Example.com"]
-        topic_mapping = {}
+        topic_mapping = {".*": "default"}  # Required: at least one rule
         filter_obj = EmailFilter(allowed_senders, topic_mapping)
 
         self.assertTrue(filter_obj.is_allowed_sender("sender1@example.com"))
@@ -29,6 +29,7 @@ class TestEmailFilter(unittest.TestCase):
         topic_mapping = {
             ".*invoice.*": "invoices",
             ".*report.*": "reports",
+            ".*": "default",  # Last rule is used as default
         }
         filter_obj = EmailFilter(allowed_senders, topic_mapping)
 
@@ -36,10 +37,10 @@ class TestEmailFilter(unittest.TestCase):
         self.assertEqual(result, "invoices")
 
         result = filter_obj.resolve_folder("Random subject")
-        self.assertIsNone(result)
+        self.assertEqual(result, "default")  # Uses last rule as default
 
     def test_resolve_folder_empty_mapping(self):
-        """Test EmailFilter.resolve_folder with empty mapping."""
+        """Test EmailFilter.resolve_folder with empty mapping raises ValueError."""
         filter_obj = EmailFilter([], {})
-        result = filter_obj.resolve_folder("Test subject")
-        self.assertIsNone(result)
+        with self.assertRaises(ValueError):
+            filter_obj.resolve_folder("Test subject")

@@ -205,6 +205,9 @@ class TestConfigValidation(unittest.TestCase):
             },
             "processing": {},
             "allowed_senders": [],
+            "topic_mapping": {
+                ".*": "default",
+            },
         }
         # Now uses print instead of logging.warning (before logging is set up)
         # Just verify validation doesn't fail
@@ -406,6 +409,9 @@ processing:
                 "user": "test@example.com",
             },
             "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
         }
         # Should not raise
         ConfigLoader.validate(config)

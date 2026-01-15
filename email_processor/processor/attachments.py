@@ -16,7 +16,6 @@ class AttachmentHandler:
 
     def __init__(
         self,
-        download_dir: Path,
         max_size: int = MAX_ATTACHMENT_SIZE,
         allowed_extensions: Optional[list[str]] = None,
         blocked_extensions: Optional[list[str]] = None,
@@ -25,14 +24,12 @@ class AttachmentHandler:
         Initialize attachment handler.
 
         Args:
-            download_dir: Base download directory
             max_size: Maximum attachment size in bytes
             allowed_extensions: List of allowed file extensions (e.g., [".pdf", ".doc"]).
                                If None or empty, all extensions are allowed (unless blocked).
             blocked_extensions: List of blocked file extensions (e.g., [".exe", ".bat"]).
                                If None or empty, no extensions are blocked.
         """
-        self.download_dir = download_dir
         self.max_size = max_size
         # Normalize extensions to lowercase with dot prefix
         self.allowed_extensions: Optional[set[str]] = None

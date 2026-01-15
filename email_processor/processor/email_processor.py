@@ -60,7 +60,6 @@ from email_processor.imap.mock_client import MockIMAP4_SSL
 from email_processor.logging.setup import get_logger, setup_logging
 from email_processor.processor.attachments import AttachmentHandler
 from email_processor.processor.filters import EmailFilter
-from email_processor.storage.file_manager import validate_path
 from email_processor.storage.uid_storage import (
     UIDStorage,
     cleanup_old_processed_days,
@@ -69,7 +68,6 @@ from email_processor.storage.uid_storage import (
 )
 from email_processor.utils.context import set_correlation_id, set_request_id
 from email_processor.utils.email_utils import decode_mime_header_value, parse_email_date
-from email_processor.utils.path_utils import normalize_folder_name
 
 
 def get_start_date(days_back: int) -> str:
@@ -140,8 +138,6 @@ class EmailProcessor:
 
         proc_cfg = config.get("processing", {})
         self.start_days_back = int(proc_cfg.get("start_days_back", 5))
-        download_dir_str = proc_cfg.get("download_dir", "downloads")
-        self.download_dir = Path(download_dir_str).resolve()
         self.archive_folder = proc_cfg.get("archive_folder", "INBOX/Processed")
         self.processed_dir = proc_cfg.get("processed_dir", "processed_uids")
         self.keep_processed_days = int(proc_cfg.get("keep_processed_days", 0))
@@ -162,7 +158,6 @@ class EmailProcessor:
         # Initialize components
         self.filter = EmailFilter(self.allowed_senders, self.topic_mapping)
         self.attachment_handler = AttachmentHandler(
-            self.download_dir,
             MAX_ATTACHMENT_SIZE,
             allowed_extensions=allowed_extensions,
             blocked_extensions=blocked_extensions,
@@ -434,15 +429,18 @@ class EmailProcessor:
                 errors=error_count,
             )
 
-            # Collect file statistics
+            # Collect file statistics from all folders in topic_mapping
             file_stats: Optional[dict[str, int]] = None
             if processed_count > 0 and not dry_run:
                 try:
                     file_stats = {}
-                    for file_path in self.download_dir.rglob("*"):
-                        if file_path.is_file():
-                            ext = file_path.suffix.lower() or "(no extension)"
-                            file_stats[ext] = file_stats.get(ext, 0) + 1
+                    for folder_path_str in self.topic_mapping.values():
+                        folder_path = Path(folder_path_str)
+                        if folder_path.exists() and folder_path.is_dir():
+                            for file_path in folder_path.rglob("*"):
+                                if file_path.is_file():
+                                    ext = file_path.suffix.lower() or "(no extension)"
+                                    file_stats[ext] = file_stats.get(ext, 0) + 1
                     if file_stats:
                         sorted_stats = dict(
                             sorted(file_stats.items(), key=lambda x: x[1], reverse=True)
@@ -665,19 +663,11 @@ class EmailProcessor:
             return "skipped"
 
         # Folder determination
+        mapped_folder = None
         try:
             mapped_folder = self.filter.resolve_folder(subject)
-            if mapped_folder:
-                target_folder = self.download_dir / mapped_folder
-            else:
-                target_folder = self.download_dir / normalize_folder_name(subject)
-
-            download_dir_resolved = self.download_dir.resolve()
+            target_folder = Path(mapped_folder)
             target_folder_resolved = target_folder.resolve()
-
-            if not validate_path(download_dir_resolved, target_folder_resolved):
-                uid_logger.error("invalid_target_folder", target_folder=str(target_folder))
-                return "error"
 
             target_folder_resolved.mkdir(parents=True, exist_ok=True)
             target_folder = target_folder_resolved

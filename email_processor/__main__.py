@@ -198,7 +198,6 @@ def _display_results_rich(result, console_instance: "Console") -> None:
         result.metrics
         and hasattr(result.metrics, "total_time")
         and isinstance(result.metrics.total_time, (int, float))
-        and result.metrics.total_time > 0
     ):
         metrics_table = Table(
             title="Performance Metrics", show_header=True, header_style="bold blue"

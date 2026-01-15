@@ -32,7 +32,6 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             },
             "processing": {
                 "start_days_back": 5,
-                "download_dir": str(Path(self.temp_dir) / "downloads"),
                 "archive_folder": "INBOX/Processed",
                 "processed_dir": str(Path(self.temp_dir) / "processed_uids"),
                 "keep_processed_days": 0,
@@ -46,7 +45,8 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             },
             "allowed_senders": ["sender@example.com"],
             "topic_mapping": {
-                ".*invoice.*": "invoices",
+                ".*invoice.*": str(Path(self.temp_dir) / "downloads" / "invoices"),
+                ".*": str(Path(self.temp_dir) / "downloads" / "default"),
             },
         }
         self.processor = EmailProcessor(self.config)
@@ -81,22 +81,6 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             "email_processor.processor.email_processor.message_from_bytes",
             side_effect=Exception("Parse error"),
         ):
-            from email_processor.processor.email_processor import ProcessingMetrics
-
-            metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
-            self.assertEqual(result, "error")
-
-    def test_process_email_invalid_target_folder(self):
-        """Test _process_email when target folder validation fails."""
-        mock_mail = MagicMock()
-        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
-        mock_mail.fetch.side_effect = [
-            ("OK", [(b"UID 123 SIZE 1000", None)]),
-            ("OK", [(None, header_bytes)]),
-        ]
-
-        with patch("email_processor.processor.email_processor.validate_path", return_value=False):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
@@ -373,11 +357,13 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             ),
             patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
         ):
-            # Create some test files in download_dir
-            download_dir = Path(self.temp_dir) / "downloads"
-            download_dir.mkdir(parents=True, exist_ok=True)
-            (download_dir / "test.pdf").write_text("test")
-            (download_dir / "test.doc").write_text("test")
+            # Create some test files in folders from topic_mapping
+            invoices_dir = Path(self.temp_dir) / "downloads" / "invoices"
+            invoices_dir.mkdir(parents=True, exist_ok=True)
+            (invoices_dir / "test.pdf").write_text("test")
+            default_dir = Path(self.temp_dir) / "downloads" / "default"
+            default_dir.mkdir(parents=True, exist_ok=True)
+            (default_dir / "test.doc").write_text("test")
 
             result = self.processor.process(dry_run=False)
             # File stats should be None when no emails processed
