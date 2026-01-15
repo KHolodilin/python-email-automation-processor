@@ -61,6 +61,9 @@ unfixable = []
 "email_processor/logging/setup.py" = [
     "PLC0415", # Import in function to avoid circular import
 ]
+"email_processor/smtp/sender.py" = [
+    "PLC0415", # Import in function to avoid circular dependency
+]
 
 [lint.isort]
 known-first-party = ["email_processor"]
