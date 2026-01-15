@@ -105,6 +105,31 @@ def main() -> int:
         action="store_true",
         help="Create default configuration file from config.yaml.example",
     )
+    parser.add_argument(
+        "--send-file",
+        type=str,
+        help="Send a single file via email",
+    )
+    parser.add_argument(
+        "--send-folder",
+        type=str,
+        help="Send all new files from specified folder via email",
+    )
+    parser.add_argument(
+        "--recipient",
+        type=str,
+        help="Override default recipient email address from config",
+    )
+    parser.add_argument(
+        "--subject",
+        type=str,
+        help="Override email subject (default: filename or template from config)",
+    )
+    parser.add_argument(
+        "--dry-run-send",
+        action="store_true",
+        help="Dry-run mode for sending emails (test without actually sending)",
+    )
     parser.add_argument("--version", action="version", version=f"Email Processor {__version__}")
     args = parser.parse_args()
 
@@ -145,6 +170,9 @@ def main() -> int:
                 print("Error: 'imap.user' is missing in config.yaml")
             return 1
         clear_passwords(KEYRING_SERVICE_NAME, user)
+    elif args.send_file or args.send_folder:
+        # Handle SMTP sending commands
+        return _handle_smtp_send(cfg, args, console)
     else:
         try:
             processor = EmailProcessor(cfg)
@@ -268,6 +296,205 @@ def _display_results_rich(result, console_instance: "Console") -> None:
                 metrics_table.add_row("Peak Memory", f"{peak_mb:.2f} MB")
 
         console_instance.print(metrics_table)
+
+
+def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | None") -> int:
+    """Handle SMTP sending commands."""
+    from datetime import datetime
+
+    from email_processor.imap.auth import get_imap_password
+    from email_processor.smtp.sender import EmailSender
+    from email_processor.storage.sent_files_storage import SentFilesStorage
+
+    # Check SMTP config
+    smtp_cfg = cfg.get("smtp")
+    if not smtp_cfg:
+        if console:
+            console.print("[red]Error:[/red] 'smtp' section is missing in config.yaml")
+        else:
+            print("Error: 'smtp' section is missing in config.yaml")
+        return 1
+
+    # Get SMTP settings
+    smtp_server = smtp_cfg.get("server")
+    smtp_port = int(smtp_cfg.get("port", 587))
+    smtp_user = smtp_cfg.get("user") or cfg.get("imap", {}).get("user")
+    use_tls = smtp_cfg.get("use_tls", True)
+    use_ssl = smtp_cfg.get("use_ssl", False)
+    max_email_size_mb = float(smtp_cfg.get("max_email_size", 25))
+    sent_files_dir = smtp_cfg.get("sent_files_dir", "sent_files")
+    subject_template = smtp_cfg.get("subject_template")
+    subject_template_package = smtp_cfg.get("subject_template_package")
+
+    if not smtp_server:
+        if console:
+            console.print("[red]Error:[/red] 'smtp.server' is required in config.yaml")
+        else:
+            print("Error: 'smtp.server' is required in config.yaml")
+        return 1
+
+    if not smtp_user:
+        if console:
+            console.print("[red]Error:[/red] 'smtp.user' or 'imap.user' is required in config.yaml")
+        else:
+            print("Error: 'smtp.user' or 'imap.user' is required in config.yaml")
+        return 1
+
+    # Get recipient
+    recipient = args.recipient or smtp_cfg.get("default_recipient")
+    if not recipient:
+        if console:
+            console.print(
+                "[red]Error:[/red] Recipient not specified. Use --recipient or set smtp.default_recipient in config.yaml"
+            )
+        else:
+            print(
+                "Error: Recipient not specified. Use --recipient or set smtp.default_recipient in config.yaml"
+            )
+        return 1
+
+    # Get password
+    try:
+        password = get_imap_password(smtp_user)
+    except Exception as e:
+        if console:
+            console.print(f"[red]Error getting password:[/red] {e}")
+        else:
+            print(f"Error getting password: {e}")
+        return 1
+
+    # Initialize sender and storage
+    sender = EmailSender(
+        smtp_server=smtp_server,
+        smtp_port=smtp_port,
+        smtp_user=smtp_user,
+        smtp_password=password,
+        use_tls=use_tls,
+        use_ssl=use_ssl,
+        max_email_size_mb=max_email_size_mb,
+        subject_template=subject_template,
+        subject_template_package=subject_template_package,
+    )
+    storage = SentFilesStorage(sent_files_dir)
+    day_str = datetime.now().strftime("%Y-%m-%d")
+
+    dry_run = args.dry_run_send
+
+    if args.send_file:
+        # Send single file
+        file_path = Path(args.send_file)
+        if not file_path.exists():
+            if console:
+                console.print(f"[red]Error:[/red] File not found: {file_path}")
+            else:
+                print(f"Error: File not found: {file_path}")
+            return 1
+
+        if not file_path.is_file():
+            if console:
+                console.print(f"[red]Error:[/red] Not a file: {file_path}")
+            else:
+                print(f"Error: Not a file: {file_path}")
+            return 1
+
+        # Check if already sent
+        if not dry_run and storage.is_sent(file_path, day_str):
+            if console:
+                console.print(f"[yellow]Warning:[/yellow] File already sent: {file_path.name}")
+            else:
+                print(f"Warning: File already sent: {file_path.name}")
+            return 0
+
+        # Send file
+        success = sender.send_file(file_path, recipient, args.subject, dry_run=dry_run)
+
+        if success and not dry_run:
+            storage.mark_as_sent(file_path, day_str)
+            if console:
+                console.print(f"[green]✓[/green] File sent: {file_path.name}")
+            else:
+                print(f"File sent: {file_path.name}")
+        elif success and dry_run:
+            if console:
+                console.print(f"[cyan]DRY-RUN:[/cyan] Would send file: {file_path.name}")
+            else:
+                print(f"DRY-RUN: Would send file: {file_path.name}")
+        else:
+            if console:
+                console.print(f"[red]Error:[/red] Failed to send file: {file_path.name}")
+            else:
+                print(f"Error: Failed to send file: {file_path.name}")
+            return 1
+
+        return 0
+
+    elif args.send_folder:
+        # Send files from folder
+        folder_path = Path(args.send_folder)
+        if not folder_path.exists():
+            if console:
+                console.print(f"[red]Error:[/red] Folder not found: {folder_path}")
+            else:
+                print(f"Error: Folder not found: {folder_path}")
+            return 1
+
+        if not folder_path.is_dir():
+            if console:
+                console.print(f"[red]Error:[/red] Not a folder: {folder_path}")
+            else:
+                print(f"Error: Not a folder: {folder_path}")
+            return 1
+
+        # Find new files
+        all_files = [f for f in folder_path.iterdir() if f.is_file()]
+        new_files = []
+        skipped_count = 0
+
+        for file_path in all_files:
+            if not dry_run and storage.is_sent(file_path, day_str):
+                skipped_count += 1
+            else:
+                new_files.append(file_path)
+
+        if not new_files:
+            if console:
+                console.print(
+                    f"[yellow]No new files to send[/yellow] (skipped {skipped_count} already sent)"
+                )
+            else:
+                print(f"No new files to send (skipped {skipped_count} already sent)")
+            return 0
+
+        # Send files
+        sent_count = 0
+        failed_count = 0
+
+        for file_path in new_files:
+            success = sender.send_file(file_path, recipient, args.subject, dry_run=dry_run)
+            if success:
+                if not dry_run:
+                    storage.mark_as_sent(file_path, day_str)
+                sent_count += 1
+            else:
+                failed_count += 1
+
+        # Display results
+        if console:
+            console.print(f"[green]Sent:[/green] {sent_count} files")
+            if skipped_count > 0:
+                console.print(f"[yellow]Skipped:[/yellow] {skipped_count} files (already sent)")
+            if failed_count > 0:
+                console.print(f"[red]Failed:[/red] {failed_count} files")
+        else:
+            print(f"Sent: {sent_count} files")
+            if skipped_count > 0:
+                print(f"Skipped: {skipped_count} files (already sent)")
+            if failed_count > 0:
+                print(f"Failed: {failed_count} files")
+
+        return 0 if failed_count == 0 else 1
+
+    return 0
 
 
 if __name__ == "__main__":

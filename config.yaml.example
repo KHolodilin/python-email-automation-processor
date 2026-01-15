@@ -7,6 +7,21 @@ imap:
   max_retries: 5
   retry_delay: 3
 
+# SMTP settings for sending emails
+smtp:
+  server: "smtp.example.com"
+  port: 587  # or 465 for SSL
+  use_tls: true  # for port 587
+  use_ssl: false  # for port 465
+  user: "your_email@example.com"  # reuse from imap.user or set separately
+  default_recipient: "recipient@example.com"  # default recipient email address (required)
+  max_email_size: 25  # MB
+  sent_files_dir: "sent_files"  # directory for storing sent file hashes
+  # Optional: subject templates
+  # subject_template: "File: {filename}"  # template for single file
+  # subject_template_package: "Package of files - {date}"  # template for multiple files
+  # Available variables: {filename}, {filenames}, {file_count}, {date}, {datetime}, {size}, {total_size}
+
 processing:
   start_days_back: 5
   archive_folder: "INBOX/Processed"
