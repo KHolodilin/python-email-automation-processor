@@ -2,21 +2,23 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = {find = {}}
+
 [project]
 name = "email-processor"
-version = "7.1.6"
-description = "Email attachment processor with IMAP support"
+version = "7.2.0"
+description = "Email attachment processor with IMAP and SMTP support"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Valerii Kholodilin", email = "kholodilin.valerii@gmail.com"}
 ]
-keywords = ["email", "imap", "attachment", "processor", "automation"]
+keywords = ["email", "imap", "smtp", "attachment", "processor", "automation"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -34,6 +36,12 @@ dependencies = [
     "structlog>=24.0.0",
     "tqdm>=4.66.0",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/vkholodilin/python-email-automation-processor"
+"Bug Reports" = "https://github.com/vkholodilin/python-email-automation-processor/issues"
+"Source" = "https://github.com/vkholodilin/python-email-automation-processor"
+"Documentation" = "https://github.com/vkholodilin/python-email-automation-processor#readme"
 
 [project.optional-dependencies]
 dev = [

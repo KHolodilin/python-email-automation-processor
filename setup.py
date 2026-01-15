@@ -1,66 +1,49 @@
-"""Setup script for email-processor package."""
+"""Setup script for email-processor package.
 
+This file is kept for backward compatibility with older pip versions (Python 3.9+).
+All package metadata is defined in pyproject.toml.
+"""
+
+import site
 from pathlib import Path
+from typing import Union
 
-from setuptools import find_packages, setup
+from setuptools import setup
+from setuptools.command.develop import develop
 
-# Read README for long description
-readme_file = Path(__file__).parent / "README.md"
-long_description = ""
-if readme_file.exists():
-    with readme_file.open("r", encoding="utf-8") as f:
-        long_description = f.read()
 
-# Read version
-version_file = Path(__file__).parent / "email_processor" / "__version__.py"
-version = "7.1.5"
-if version_file.exists():
-    with version_file.open("r", encoding="utf-8") as f:
-        for line in f:
-            if line.startswith("__version__"):
-                version = line.split("=")[1].strip().strip('"').strip("'")
-                break
+class DevelopCommand(develop):
+    """Override develop command to avoid calling pip."""
 
+    def run(self) -> None:
+        """Run the develop command without calling pip."""
+        # Call parent's run but skip the pip install step
+        install_dir: Union[str, None] = getattr(self, "install_dir", None)
+        if install_dir is None:
+            # Use default install directory
+            install_cmd = self.get_finalized_command("install")
+            install_dir = getattr(install_cmd, "install_lib", None)
+            if install_dir is None:
+                # Fallback to site-packages
+                install_dir = site.getsitepackages()[0] if site.getsitepackages() else "."
+
+        install_dir_path = Path(install_dir).resolve()
+        self.install_dir = str(install_dir_path)
+        self.egg_path = install_dir_path / f"{self.distribution.get_name()}.egg-link"
+        self.egg_base = str(install_dir_path)
+        self.ensure_target_dir()
+        self.egg_info = self.distribution.get_command_obj("egg_info")
+        self.egg_info.egg_base = self.egg_base
+        self.egg_info.egg_name = self.distribution.get_name()
+        self.egg_info.egg_version = self.distribution.get_version()
+        self.egg_info.run()
+        self.install_egg_info()
+        self.install_scripts()
+        self.create_distutils_lib()
+
+
+# Minimal setup.py - all configuration is in pyproject.toml
+# This file exists only for backward compatibility with Python 3.9+
 setup(
-    name="email-processor",
-    version=version,
-    author="Vladimir Kholodilin",
-    author_email="vkholodilin@example.com",
-    description="Email attachment processor with IMAP support - Downloads attachments, organizes by topic, and archives messages",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/vkholodilin/python-email-automation-processor",
-    project_urls={
-        "Bug Reports": "https://github.com/vkholodilin/python-email-automation-processor/issues",
-        "Source": "https://github.com/vkholodilin/python-email-automation-processor",
-        "Documentation": "https://github.com/vkholodilin/python-email-automation-processor#readme",
-    },
-    packages=find_packages(),
-    install_requires=[
-        "pyyaml>=6.0",
-        "keyring>=24.0",
-        "structlog>=24.0.0",
-        "tqdm>=4.66.0",
-    ],
-    python_requires=">=3.9",
-    entry_points={
-        "console_scripts": [
-            "email-processor=email_processor.__main__:main",
-        ],
-    },
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Topic :: Communications :: Email",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "Topic :: Utilities",
-    ],
-    keywords=["email", "imap", "attachment", "processor", "automation", "email-processing"],
+    cmdclass={"develop": DevelopCommand},
 )

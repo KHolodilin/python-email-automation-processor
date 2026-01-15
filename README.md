@@ -1,10 +1,9 @@
 # 📦 Email Attachment Processor
 ### (YAML + keyring + per-day UID storage + password management + modular architecture)
 
-Email Processor is a reliable, idempotent, and secure tool for automatic IMAP email processing:
-- downloads attachments
-- organizes them into folders based on subject
-- archives processed emails
+Email Processor is a reliable, idempotent, and secure tool for automatic email processing:
+- **IMAP**: downloads attachments, organizes them into folders based on subject, archives processed emails
+- **SMTP**: sends files via email with automatic tracking of sent files
 - stores processed email UIDs in separate files by date
 - uses keyring for secure password storage
 - **supports new command: `--clear-passwords`**
@@ -23,10 +22,8 @@ Email Processor is a reliable, idempotent, and secure tool for automatic IMAP em
 - On first run, the script will prompt for password and offer to save it
 
 ### ⚙️ Configuration via `config.yaml`
-- Download folder management
-- Subject-based sorting rules (`topic_mapping`)
-- Allowed sender management
-- Archive settings
+- **IMAP**: Download folder management, subject-based sorting rules (`topic_mapping`), allowed sender management, archive settings
+- **SMTP**: Server settings, default recipient, email size limits, subject templates
 - Behavior options ("process / skip / archive")
 - File extension filtering (whitelist/blacklist)
 - Progress bar control
@@ -108,6 +105,43 @@ python -m email_processor --create-config
 python -m email_processor --create-config --config /path/to/custom_config.yaml
 ```
 
+## SMTP Email Sending
+
+### Send a Single File
+```bash
+python -m email_processor --send-file /path/to/file.pdf
+```
+
+### Send All New Files from Folder
+```bash
+python -m email_processor --send-folder /path/to/folder
+```
+
+**Note:** Files are tracked by SHA256 hash, so renamed or moved files won't be sent again if they have the same content.
+
+### Override Recipient
+```bash
+python -m email_processor --send-file file.pdf --recipient user@example.com
+```
+
+### Override Subject
+```bash
+python -m email_processor --send-file file.pdf --subject "Custom subject"
+```
+
+### Dry-Run Mode for Sending
+```bash
+python -m email_processor --send-file file.pdf --dry-run-send
+```
+
+**Note:** In dry-run mode, the processor simulates sending without actually connecting to SMTP server. Useful for testing configuration and checking what would be sent.
+
+### Features
+- **Automatic file tracking**: Files are tracked by SHA256 hash to prevent duplicate sends
+- **Size limit handling**: Automatically splits large file packages into multiple emails
+- **Subject templates**: Customize email subjects using templates with variables
+- **Password reuse**: Uses the same keyring password as IMAP (no separate password needed)
+
 ---
 
 # ✨ Password Management Command
@@ -176,6 +210,21 @@ imap:
   max_retries: 5
   retry_delay: 3
 
+# SMTP settings for sending emails
+smtp:
+  server: "smtp.example.com"
+  port: 587  # or 465 for SSL
+  use_tls: true  # for port 587
+  use_ssl: false  # for port 465
+  user: "your_email@example.com"  # reuse from imap.user or set separately
+  default_recipient: "recipient@example.com"
+  max_email_size: 25  # MB
+  sent_files_dir: "sent_files"  # directory for storing sent file hashes
+  # Optional: subject templates
+  # subject_template: "File: {filename}"  # template for single file
+  # subject_template_package: "Package of files - {date}"  # template for multiple files
+  # Available variables: {filename}, {filenames}, {file_count}, {date}, {datetime}, {size}, {total_size}
+
 processing:
   start_days_back: 5
   archive_folder: "INBOX/Processed"
@@ -206,6 +255,34 @@ topic_mapping:
   "(Report).*": "reports"
   "(Invoice|Bill).*": "invoices"
   ".*": "default"  # Last rule is used as default for unmatched emails
+```
+
+### SMTP Configuration Details
+
+**Required settings:**
+- `smtp.server`: SMTP server hostname
+- `smtp.port`: SMTP server port (typically 587 for TLS or 465 for SSL)
+- `smtp.default_recipient`: Default recipient email address
+
+**Optional settings:**
+- `smtp.user`: SMTP username (defaults to `imap.user` if not specified)
+- `smtp.use_tls`: Use TLS encryption (default: `true` for port 587)
+- `smtp.use_ssl`: Use SSL encryption (default: `false`, use for port 465)
+- `smtp.max_email_size`: Maximum email size in MB (default: `25`)
+- `smtp.sent_files_dir`: Directory for storing sent file hashes (default: `"sent_files"`)
+- `smtp.subject_template`: Template for single file subject (e.g., `"File: {filename}"`)
+- `smtp.subject_template_package`: Template for multiple files subject (e.g., `"Package - {file_count} files"`)
+
+**Subject template variables:**
+- `{filename}` - Single file name
+- `{filenames}` - Comma-separated list of file names (for packages)
+- `{file_count}` - Number of files (for packages)
+- `{date}` - Date in format YYYY-MM-DD
+- `{datetime}` - Date and time in format YYYY-MM-DD HH:MM:SS
+- `{size}` - File size in bytes (single file)
+- `{total_size}` - Total size in bytes (for packages)
+
+**Note:** Password is reused from IMAP keyring storage (same `imap.user` key). No separate SMTP password needed.
 ```
 
 **Note:**

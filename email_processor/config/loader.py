@@ -95,6 +95,40 @@ def validate_config(cfg: dict) -> None:
                     f"Invalid folder name for pattern '{pattern}': must be non-empty string"
                 )
 
+    # Validate SMTP section (optional)
+    if "smtp" in cfg:
+        smtp = cfg["smtp"]
+        if not isinstance(smtp, dict):
+            errors.append("'smtp' must be a dictionary")
+        else:
+            if "server" not in smtp or not smtp["server"]:
+                errors.append("'smtp.server' is required when smtp section is present")
+            if "port" in smtp:
+                try:
+                    port = int(smtp["port"])
+                    if port < 1 or port > 65535:
+                        errors.append("'smtp.port' must be between 1 and 65535")
+                except (ValueError, TypeError):
+                    errors.append("'smtp.port' must be an integer")
+            if "use_tls" in smtp and not isinstance(smtp["use_tls"], bool):
+                errors.append("'smtp.use_tls' must be a boolean")
+            if "use_ssl" in smtp and not isinstance(smtp["use_ssl"], bool):
+                errors.append("'smtp.use_ssl' must be a boolean")
+            if "max_email_size" in smtp:
+                try:
+                    size = float(smtp["max_email_size"])
+                    if size <= 0:
+                        errors.append("'smtp.max_email_size' must be > 0")
+                except (ValueError, TypeError):
+                    errors.append("'smtp.max_email_size' must be a number")
+            if "default_recipient" in smtp:
+                recipient = smtp["default_recipient"]
+                if not isinstance(recipient, str) or not recipient:
+                    errors.append("'smtp.default_recipient' must be a non-empty string")
+                # Basic email validation
+                if "@" not in recipient or "." not in recipient.split("@")[-1]:
+                    errors.append("'smtp.default_recipient' must be a valid email address")
+
     if errors:
         error_msg = "Configuration validation failed:\n  - " + "\n  - ".join(errors)
         raise ValueError(error_msg)
