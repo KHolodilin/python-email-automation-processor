@@ -4,6 +4,7 @@ import argparse
 import logging
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 try:
@@ -326,8 +327,6 @@ def _display_results_rich(result, console_instance: "Console") -> None:
 
 def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | None") -> int:
     """Handle SMTP sending commands."""
-    from datetime import datetime
-
     # Check SMTP config
     smtp_cfg = cfg.get("smtp")
     if not smtp_cfg:
