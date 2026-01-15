@@ -22,13 +22,26 @@ def format_subject_template(template: str, context: dict[str, str]) -> str:
     Returns:
         Formatted subject string
     """
+    import re
+
+    # Extract all variable names from template
+    template_vars = set(re.findall(r"\{(\w+)\}", template))
+    # Build context with all template variables, using empty string for missing ones
+    full_context = {}
+    for var in template_vars:
+        full_context[var] = context.get(var, "")
+
     try:
-        return template.format(**context)
+        return template.format(**full_context)
     except KeyError as e:
         logger = get_logger()
         logger.warning("template_variable_missing", variable=str(e), template=template)
-        # Fallback: replace missing variables with empty string
-        return template.format(**{k: v for k, v in context.items() if k in template})
+        # If still fails, return template with variables replaced manually
+        result = template
+        for var in template_vars:
+            value = full_context.get(var, "")
+            result = result.replace(f"{{{var}}}", value)
+        return result
 
 
 def create_email_subject(files: list[Path], template: Optional[str] = None) -> str:

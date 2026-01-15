@@ -22,6 +22,7 @@ from email_processor import (
     __version__,
     clear_passwords,
 )
+from email_processor.logging.setup import get_logger, setup_logging
 
 CONFIG_EXAMPLE = "config.yaml.example"
 
@@ -160,6 +161,28 @@ def main() -> int:
         else:
             print(f"Unexpected error loading configuration: {e}")
         return 1
+
+    # Setup basic logging early for warnings (before EmailProcessor initializes it)
+    # Use config if available, otherwise use defaults
+    log_config = cfg.get("logging", {})
+    if not log_config:
+        # Fallback to old format for backward compatibility
+        proc_cfg = cfg.get("processing", {})
+        log_config = {
+            "level": proc_cfg.get("log_level", "INFO"),
+            "format": "console",
+        }
+    setup_logging(log_config)
+
+    # Log warning if SMTP section is missing (for backward compatibility)
+    # Only warn if SMTP commands are not being used
+    if "smtp" not in cfg and not (args.send_file or args.send_folder):
+        logger = get_logger()
+        logger.warning(
+            "smtp_section_missing",
+            message="SMTP section is missing in config.yaml. SMTP functionality will be skipped. "
+            "Add 'smtp' section to enable email sending features.",
+        )
 
     if args.clear_passwords:
         user = cfg.get("imap", {}).get("user")
