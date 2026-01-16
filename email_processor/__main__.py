@@ -28,6 +28,7 @@ from email_processor import (
 )
 from email_processor.imap.auth import get_imap_password
 from email_processor.logging.setup import get_logger, setup_logging
+from email_processor.security.encryption import encrypt_password
 from email_processor.smtp.sender import EmailSender
 from email_processor.storage.sent_files_storage import SentFilesStorage
 
@@ -300,8 +301,6 @@ def main() -> int:
 
         # Save password to keyring
         try:
-            from email_processor.security.encryption import encrypt_password
-
             encrypted_password = encrypt_password(password, config_path)
             keyring.set_password(KEYRING_SERVICE_NAME, user, encrypted_password)
             if console:
