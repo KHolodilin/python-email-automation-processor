@@ -103,16 +103,13 @@ class TestSecurityIntegration(unittest.TestCase):
 
         mock_get.return_value = wrong_encrypted
 
-        # Should fall through to prompt for new password
-        with patch("getpass.getpass") as mock_getpass, patch("builtins.input") as mock_input:
-            mock_getpass.return_value = "new_password"
-            mock_input.return_value = "n"  # Don't save
+        # Should raise ValueError instead of prompting for new password
+        with self.assertRaises(ValueError) as context:
+            get_imap_password("test@example.com")
 
-            password = get_imap_password("test@example.com")
-
-            # Should prompt for new password
-            self.assertEqual(password, "new_password")
-            mock_getpass.assert_called()
+        # Should contain error message about decryption failure
+        self.assertIn("Failed to decrypt", str(context.exception))
+        self.assertIn("--clear-passwords", str(context.exception))
 
 
 if __name__ == "__main__":

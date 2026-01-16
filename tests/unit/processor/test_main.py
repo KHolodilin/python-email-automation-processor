@@ -62,7 +62,9 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor"]):
             result = main()
             self.assertEqual(result, 0)
-            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
+            mock_processor.process.assert_called_once_with(
+                dry_run=False, mock_mode=False, config_path="config.yaml"
+            )
 
     @patch("email_processor.__main__.ConfigLoader.load")
     @patch("email_processor.__main__.EmailProcessor")
@@ -86,7 +88,9 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "--dry-run"]):
             result = main()
             self.assertEqual(result, 0)
-            mock_processor.process.assert_called_once_with(dry_run=True, mock_mode=False)
+            mock_processor.process.assert_called_once_with(
+                dry_run=True, mock_mode=False, config_path="config.yaml"
+            )
 
     @patch("email_processor.__main__.ConfigLoader.load")
     def test_main_config_file_not_found(self, mock_load_config):
@@ -131,7 +135,9 @@ class TestMainEntryPoint(unittest.TestCase):
             result = main()
             self.assertEqual(result, 0)
             mock_load_config.assert_called_once_with("custom_config.yaml")
-            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
+            mock_processor.process.assert_called_once_with(
+                dry_run=False, mock_mode=False, config_path="custom_config.yaml"
+            )
 
     @patch("email_processor.__main__.ConfigLoader.load")
     @patch("email_processor.__main__.EmailProcessor")
@@ -157,7 +163,9 @@ class TestMainEntryPoint(unittest.TestCase):
             result = main()
             # Should not crash, even with MagicMock metrics
             self.assertEqual(result, 0)
-            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
+            mock_processor.process.assert_called_once_with(
+                dry_run=False, mock_mode=False, config_path="config.yaml"
+            )
 
     @patch("email_processor.__main__.ConfigLoader.load")
     @patch("email_processor.__main__.EmailProcessor")
@@ -183,7 +191,9 @@ class TestMainEntryPoint(unittest.TestCase):
             result = main()
             # Should not crash, even with None metrics
             self.assertEqual(result, 0)
-            mock_processor.process.assert_called_once_with(dry_run=False, mock_mode=False)
+            mock_processor.process.assert_called_once_with(
+                dry_run=False, mock_mode=False, config_path="config.yaml"
+            )
 
     @patch("email_processor.__main__.ConfigLoader.load")
     @patch("email_processor.__main__.EmailProcessor")
