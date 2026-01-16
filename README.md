@@ -117,10 +117,17 @@ python -m email_processor --send-file /path/to/file.pdf
 
 ### Send All New Files from Folder
 ```bash
+# Send from specific folder
 python -m email_processor --send-folder /path/to/folder
+
+# Send from default folder (uses smtp.send_folder from config.yaml)
+python -m email_processor --send-folder
 ```
 
-**Note:** Files are tracked by SHA256 hash, so renamed or moved files won't be sent again if they have the same content.
+**Note:**
+- Files are tracked by SHA256 hash, so renamed or moved files won't be sent again if they have the same content
+- If `--send-folder` is used without path, the default folder from `smtp.send_folder` in config.yaml will be used
+- Set `smtp.send_folder: "folder_name"` in config.yaml to use default folder
 
 ### Override Recipient
 ```bash
@@ -305,6 +312,7 @@ topic_mapping:
 - `smtp.use_ssl`: Use SSL encryption (default: `false`, use for port 465)
 - `smtp.max_email_size`: Maximum email size in MB (default: `25`)
 - `smtp.sent_files_dir`: Directory for storing sent file hashes (default: `"sent_files"`)
+- `smtp.send_folder`: Default folder to send files from (optional, can be overridden with `--send-folder`)
 - `smtp.subject_template`: Template for single file subject (e.g., `"File: {filename}"`)
 - `smtp.subject_template_package`: Template for multiple files subject (e.g., `"Package - {file_count} files"`)
 
@@ -346,6 +354,32 @@ topic_mapping:
 ```bash
 python -m email_processor
 ```
+On first run, the script will prompt for password and offer to save it.
+
+### ➕ Set Password from File
+```bash
+# Read password from file and save it
+python -m email_processor --set-password --password-file ~/.pass
+
+# Read password from file, save it, and remove the file
+python -m email_processor --set-password --password-file ~/.pass --remove-password-file
+```
+
+**Security Notes:**
+- Password file should have restricted permissions (chmod 600 on Unix)
+- Use `--remove-password-file` to automatically delete the file after reading
+- Password is encrypted before saving to keyring
+- Supports complex passwords via file (can copy-paste)
+
+**Example:**
+```bash
+# Create password file
+echo "your_complex_password" > ~/.email_password
+chmod 600 ~/.email_password  # Restrict access (Unix only)
+
+# Set password and remove file
+python -m email_processor --set-password --password-file ~/.email_password --remove-password-file
+```
 
 ### 🔍 Read Password
 ```python
@@ -371,6 +405,57 @@ keyring.set_password(
 ---
 
 # 📋 Installation
+
+## Using Virtual Environment (Recommended)
+
+### 1. Create Virtual Environment
+
+**Windows:**
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+**Linux/macOS:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Copy Configuration Template
+
+```bash
+cp config.yaml.example config.yaml
+```
+
+### 4. Edit Configuration
+
+Edit `config.yaml` with your IMAP settings
+
+### 5. Run the Script
+
+```bash
+# As a module
+python -m email_processor
+
+# Or install and use as command
+pip install -e .
+email-processor
+```
+
+### 6. Deactivate Virtual Environment (when done)
+
+```bash
+deactivate
+```
+
+## Alternative: Global Installation
 
 1. Install dependencies:
 ```bash
