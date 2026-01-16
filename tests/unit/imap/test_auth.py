@@ -7,6 +7,7 @@ from unittest.mock import patch
 from email_processor.config.constants import KEYRING_SERVICE_NAME
 from email_processor.imap.auth import IMAPAuth, clear_passwords, get_imap_password
 from email_processor.logging.setup import setup_logging
+from email_processor.security.encryption import is_encrypted
 
 
 class TestIMAPPassword(unittest.TestCase):
@@ -35,20 +36,30 @@ class TestIMAPPassword(unittest.TestCase):
         mock_get.assert_called_once_with(KEYRING_SERVICE_NAME, "test@example.com")
         mock_set.assert_not_called()
 
+    @patch("email_processor.imap.auth.encrypt_password")
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
     @patch("builtins.input")
     @patch("getpass.getpass")
-    def test_get_password_from_input_save(self, mock_getpass, mock_input, mock_set, mock_get):
+    def test_get_password_from_input_save(
+        self, mock_getpass, mock_input, mock_set, mock_get, mock_encrypt
+    ):
         """Test getting password from input and saving."""
         mock_get.return_value = None
         mock_getpass.return_value = "new_password"
         mock_input.return_value = "y"
+        # Mock encryption to return encrypted password
+        mock_encrypt.return_value = "ENC:encrypted_password_data"
 
         password = get_imap_password("test@example.com")
 
         self.assertEqual(password, "new_password")
-        mock_set.assert_called_once_with(KEYRING_SERVICE_NAME, "test@example.com", "new_password")
+        # Password should be saved encrypted
+        mock_set.assert_called_once()
+        saved_password = mock_set.call_args[0][2]
+        self.assertTrue(is_encrypted(saved_password))
+        self.assertEqual(mock_set.call_args[0][0], KEYRING_SERVICE_NAME)
+        self.assertEqual(mock_set.call_args[0][1], "test@example.com")
 
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
@@ -75,21 +86,31 @@ class TestIMAPPassword(unittest.TestCase):
         with self.assertRaises(ValueError):
             get_imap_password("test@example.com")
 
+    @patch("email_processor.imap.auth.encrypt_password")
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
     @patch("builtins.input")
     @patch("getpass.getpass")
-    def test_get_password_save_error(self, mock_getpass, mock_input, mock_set, mock_get):
+    def test_get_password_save_error(
+        self, mock_getpass, mock_input, mock_set, mock_get, mock_encrypt
+    ):
         """Test handling error when saving password to keyring."""
         mock_get.return_value = None
         mock_getpass.return_value = "new_password"
         mock_input.return_value = "y"
+        # Mock encryption to fail
+        mock_encrypt.side_effect = Exception("Encryption error")
+        # Fallback save also fails
         mock_set.side_effect = Exception("Keyring error")
 
         # Should still return password even if save fails
         password = get_imap_password("test@example.com")
         self.assertEqual(password, "new_password")
-        mock_set.assert_called_once()
+        # Should be called once with unencrypted password (fallback after encryption failed)
+        self.assertEqual(mock_set.call_count, 1)
+        # Call should be with unencrypted password (fallback)
+        call_password = mock_set.call_args[0][2]
+        self.assertEqual(call_password, "new_password")
 
     def test_imap_auth_get_password(self):
         """Test IMAPAuth.get_password method."""

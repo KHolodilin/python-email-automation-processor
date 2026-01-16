@@ -21,26 +21,20 @@ class TestSecurityIntegration(unittest.TestCase):
     @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
-    @patch("builtins.input")
-    @patch("getpass.getpass")
-    def test_password_encryption_integration(self, mock_getpass, mock_input, mock_set, mock_get):
+    def test_password_encryption_integration(self, mock_set, mock_get):
         """Test full integration of password encryption with keyring."""
         # Simulate encrypted password in keyring
         test_password = "test_password_123"
         encrypted = encrypt_password(test_password)
 
         mock_get.return_value = encrypted
-        mock_getpass.return_value = test_password
-        mock_input.return_value = "y"
 
         # Get password should decrypt automatically
         password = get_imap_password("test@example.com")
 
         self.assertEqual(password, test_password)
-        # Should save encrypted password
-        mock_set.assert_called()
-        saved_password = mock_set.call_args[0][2]
-        self.assertTrue(is_encrypted(saved_password))
+        # Should not save password since it's already in keyring
+        mock_set.assert_not_called()
 
     @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
     @patch("email_processor.imap.auth.keyring.get_password")
