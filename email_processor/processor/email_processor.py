@@ -741,6 +741,7 @@ class EmailProcessor:
         # Process attachments
         attachments_found = False
         attachment_errors = []
+        blocked_attachments = 0
         try:
             for part in msg.walk():
                 if part.get_content_disposition() == "attachment":
@@ -754,7 +755,18 @@ class EmailProcessor:
                             if file_size:
                                 metrics.total_downloaded_size += file_size
                         else:
-                            attachment_errors.append("Failed to save attachment")
+                            # Check if it was blocked by extension filter (not a real error)
+                            filename_raw = part.get_filename()
+                            if filename_raw:
+                                filename = decode_mime_header_value(filename_raw)
+                                if filename and not self.attachment_handler.is_allowed_extension(
+                                    filename
+                                ):
+                                    blocked_attachments += 1
+                                else:
+                                    attachment_errors.append("Failed to save attachment")
+                            else:
+                                attachment_errors.append("Failed to save attachment")
                     elif result:
                         attachments_found = True
                     else:
@@ -808,7 +820,12 @@ class EmailProcessor:
         if attachments_found:
             return "processed"
         elif attachment_errors:
+            # Only return error if there were actual errors (not just blocked extensions)
             return "error"
+        elif blocked_attachments > 0:
+            # If only blocked attachments (no real errors), treat as skipped
+            uid_logger.debug("attachments_blocked", count=blocked_attachments)
+            return "skipped"
         else:
             uid_logger.debug("no_attachments")
             return "skipped"
