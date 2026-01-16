@@ -13,7 +13,8 @@ smtp:
   port: 587  # or 465 for SSL
   use_tls: true  # for port 587
   use_ssl: false  # for port 465
-  user: "your_email@example.com"  # reuse from imap.user or set separately
+  user: "your_email@example.com"  # SMTP login for authentication (reuse from imap.user or set separately)
+  from_address: "sender@example.com"  # Required: email address to send from (From header)
   default_recipient: "recipient@example.com"  # default recipient email address (required)
   max_email_size: 25  # MB
   sent_files_dir: "sent_files"  # directory for storing sent file hashes

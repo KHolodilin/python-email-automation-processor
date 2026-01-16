@@ -56,13 +56,20 @@ def smtp_connect(
             )
 
             if use_ssl:
+                logger.debug("smtp_ssl_connection", server=server, port=port)
                 smtp: Union[smtplib.SMTP, smtplib.SMTP_SSL] = smtplib.SMTP_SSL(server, port)
+                logger.debug("smtp_ssl_connected")
             else:
+                logger.debug("smtp_plain_connection", server=server, port=port)
                 smtp = smtplib.SMTP(server, port)
                 if use_tls:
+                    logger.debug("smtp_starting_tls")
                     smtp.starttls()
+                    logger.debug("smtp_tls_started")
 
+            logger.debug("smtp_authenticating", user=user)
             smtp.login(user, password)
+            logger.debug("smtp_authenticated")
             logger.info(
                 "smtp_connected", server=server, port=port, use_tls=use_tls, use_ssl=use_ssl
             )

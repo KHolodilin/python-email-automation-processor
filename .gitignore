@@ -312,3 +312,5 @@ htmlcov/
 /test_downloads
 /logs
 /invoices
+/*.reg
+/sent_files

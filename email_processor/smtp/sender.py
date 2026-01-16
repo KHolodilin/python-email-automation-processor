@@ -23,23 +23,35 @@ def format_subject_template(template: str, context: dict[str, str]) -> str:
     Returns:
         Formatted subject string
     """
+    logger = get_logger()
     # Extract all variable names from template
     template_vars = set(re.findall(r"\{(\w+)\}", template))
+    logger.debug(
+        "template_vars_extracted",
+        template=template,
+        found_vars=list(template_vars),
+        provided_vars=list(context.keys()),
+    )
     # Build context with all template variables, using empty string for missing ones
     full_context = {}
     for var in template_vars:
         full_context[var] = context.get(var, "")
+        if var not in context:
+            logger.debug("template_var_missing_using_empty", variable=var)
 
+    logger.debug("template_formatting", template=template, context=full_context)
     try:
-        return template.format(**full_context)
+        result = template.format(**full_context)
+        logger.debug("template_formatted", result=result)
+        return result
     except KeyError as e:
-        logger = get_logger()
         logger.warning("template_variable_missing", variable=str(e), template=template)
         # If still fails, return template with variables replaced manually
         result = template
         for var in template_vars:
             value = full_context.get(var, "")
             result = result.replace(f"{{{var}}}", value)
+        logger.debug("template_manual_replacement", result=result)
         return result
 
 
@@ -53,16 +65,25 @@ def create_email_subject(files: list[Path], template: Optional[str] = None) -> s
     Returns:
         Email subject string
     """
+    logger = get_logger()
+    logger.debug("creating_email_subject", num_files=len(files), has_template=template is not None)
     if template:
         now = datetime.now()
         if len(files) == 1:
             file = files[0]
+            file_size = file.stat().st_size
             context = {
                 "filename": file.name,
                 "date": now.strftime("%Y-%m-%d"),
                 "datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "size": str(file.stat().st_size),
+                "size": str(file_size),
             }
+            logger.debug(
+                "subject_single_file_template",
+                template=template,
+                context=context,
+                file_size_bytes=file_size,
+            )
             return format_subject_template(template, context)
         else:
             filenames = ", ".join(f.name for f in files)
@@ -74,14 +95,24 @@ def create_email_subject(files: list[Path], template: Optional[str] = None) -> s
                 "datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "total_size": str(total_size),
             }
+            logger.debug(
+                "subject_package_template",
+                template=template,
+                context=context,
+                total_size_bytes=total_size,
+            )
             return format_subject_template(template, context)
 
     # Default logic
     if len(files) == 1:
-        return files[0].name
+        subject = files[0].name
+        logger.debug("subject_default_single_file", subject=subject)
+        return subject
     else:
         now = datetime.now()
-        return f"Package of files - {now.strftime('%Y-%m-%d %H:%M:%S')}"
+        subject = f"Package of files - {now.strftime('%Y-%m-%d %H:%M:%S')}"
+        logger.debug("subject_default_package", subject=subject, num_files=len(files))
+        return subject
 
 
 def calculate_email_size(files: list[Path]) -> int:
@@ -93,10 +124,21 @@ def calculate_email_size(files: list[Path]) -> int:
     Returns:
         Approximate email size in bytes (file sizes + ~33% MIME overhead)
     """
-    total_file_size = sum(f.stat().st_size for f in files)
+    logger = get_logger()
+    file_sizes = [f.stat().st_size for f in files]
+    total_file_size = sum(file_sizes)
     # MIME encoding adds approximately 33% overhead
     mime_overhead = int(total_file_size * 0.33)
-    return total_file_size + mime_overhead
+    total_size = total_file_size + mime_overhead
+    logger.debug(
+        "email_size_calculated",
+        num_files=len(files),
+        total_file_size_bytes=total_file_size,
+        mime_overhead_bytes=mime_overhead,
+        total_size_bytes=total_size,
+        file_sizes_bytes=file_sizes,
+    )
+    return total_size
 
 
 def split_files_by_size(files: list[Path], max_size_mb: float) -> list[list[Path]]:
@@ -114,6 +156,12 @@ def split_files_by_size(files: list[Path], max_size_mb: float) -> list[list[Path
     """
     max_size_bytes = int(max_size_mb * 1024 * 1024)
     logger = get_logger()
+    logger.debug(
+        "splitting_files_by_size",
+        num_files=len(files),
+        max_size_mb=max_size_mb,
+        max_size_bytes=max_size_bytes,
+    )
     groups: list[list[Path]] = []
     current_group: list[Path] = []
     current_size = 0
@@ -121,6 +169,16 @@ def split_files_by_size(files: list[Path], max_size_mb: float) -> list[list[Path
     for file_path in files:
         file_size = file_path.stat().st_size
         email_size_with_file = calculate_email_size([*current_group, file_path])
+
+        logger.debug(
+            "file_size_check",
+            file=str(file_path),
+            file_size_bytes=file_size,
+            current_group_size=len(current_group),
+            current_group_email_size_bytes=current_size,
+            email_size_with_file_bytes=email_size_with_file,
+            max_size_bytes=max_size_bytes,
+        )
 
         # Check if single file exceeds limit
         if file_size > max_size_bytes:
@@ -142,17 +200,32 @@ def split_files_by_size(files: list[Path], max_size_mb: float) -> list[list[Path
                 group_size=len(current_group),
                 group_size_bytes=current_size,
                 next_file=str(file_path),
+                next_file_size_bytes=file_size,
             )
             groups.append(current_group)
             current_group = [file_path]
-            current_size = file_size
+            current_size = calculate_email_size([file_path])
         else:
             # Add to current group
             current_group.append(file_path)
             current_size = email_size_with_file
+            logger.debug(
+                "file_added_to_group",
+                file=str(file_path),
+                group_size=len(current_group),
+                group_email_size_bytes=current_size,
+            )
 
     if current_group:
         groups.append(current_group)
+        logger.debug("final_group_added", group_size=len(current_group))
+
+    logger.debug(
+        "files_split_complete",
+        total_files=len(files),
+        num_groups=len(groups),
+        group_sizes=[len(g) for g in groups],
+    )
 
     if len(groups) > 1:
         logger.warning(
@@ -185,6 +258,14 @@ def create_email_message(
         MIMEMultipart message object
     """
     logger = get_logger()
+    logger.debug(
+        "creating_email_message",
+        from_addr=from_addr,
+        to_addr=to_addr,
+        subject=subject,
+        num_files=len(files),
+        has_custom_body=body_text is not None,
+    )
     msg = MIMEMultipart()
     msg["From"] = from_addr
     msg["To"] = to_addr
@@ -193,6 +274,7 @@ def create_email_message(
 
     # Add body text if provided
     if body_text:
+        logger.debug("using_custom_body", body_length=len(body_text))
         msg.attach(MIMEText(body_text, "plain", "utf-8"))
     else:
         # Default body
@@ -200,27 +282,50 @@ def create_email_message(
             body = f"Attached file: {files[0].name}"
         else:
             body = f"Attached {len(files)} files:\n" + "\n".join(f"  - {f.name}" for f in files)
+        logger.debug("using_default_body", body_length=len(body))
         msg.attach(MIMEText(body, "plain", "utf-8"))
 
     # Attach files
+    total_attachment_size = 0
     for file_path in files:
         try:
+            file_size = file_path.stat().st_size
+            logger.debug(
+                "attaching_file",
+                file=str(file_path),
+                size_bytes=file_size,
+                filename=file_path.name,
+            )
             with file_path.open("rb") as f:
                 part = MIMEBase("application", "octet-stream")
-                part.set_payload(f.read())
+                file_data = f.read()
+                part.set_payload(file_data)
                 email.encoders.encode_base64(part)
                 part.add_header(
                     "Content-Disposition",
                     f'attachment; filename="{file_path.name}"',
                 )
                 msg.attach(part)
+                total_attachment_size += file_size
                 logger.debug(
-                    "file_attached", file=str(file_path), size_bytes=file_path.stat().st_size
+                    "file_attached",
+                    file=str(file_path),
+                    size_bytes=file_size,
+                    total_attachments_size_bytes=total_attachment_size,
                 )
         except OSError as e:
             logger.error("file_attach_error", file=str(file_path), error=str(e))
             raise
 
+    # Calculate approximate message size
+    msg_str = str(msg)
+    msg_size = len(msg_str.encode("utf-8"))
+    logger.debug(
+        "email_message_created",
+        num_files=len(files),
+        total_attachment_size_bytes=total_attachment_size,
+        estimated_message_size_bytes=msg_size,
+    )
     return msg
 
 
@@ -233,6 +338,7 @@ class EmailSender:
         smtp_port: int,
         smtp_user: str,
         smtp_password: str,
+        from_address: str,
         use_tls: bool = True,
         use_ssl: bool = False,
         max_retries: int = 5,
@@ -247,8 +353,9 @@ class EmailSender:
         Args:
             smtp_server: SMTP server hostname
             smtp_port: SMTP server port
-            smtp_user: SMTP username (email address)
+            smtp_user: SMTP username (email address) for authentication
             smtp_password: SMTP password
+            from_address: Email address to send from (From header)
             use_tls: Use TLS encryption
             use_ssl: Use SSL encryption
             max_retries: Maximum retry attempts for connection
@@ -261,6 +368,7 @@ class EmailSender:
         self.smtp_port = smtp_port
         self.smtp_user = smtp_user
         self.smtp_password = smtp_password
+        self.from_address = from_address
         self.use_tls = use_tls
         self.use_ssl = use_ssl
         self.max_retries = max_retries
@@ -269,6 +377,13 @@ class EmailSender:
         self.subject_template = subject_template
         self.subject_template_package = subject_template_package
         self.logger = get_logger()
+        self.logger.debug(
+            "email_sender_initialized",
+            smtp_server=smtp_server,
+            smtp_port=smtp_port,
+            smtp_user=smtp_user,
+            from_address=from_address,
+        )
 
     def send_file(
         self,
@@ -313,18 +428,39 @@ class EmailSender:
             return False
 
         # Determine subject
+        self.logger.debug(
+            "determining_email_subject",
+            num_files=len(files),
+            has_custom_subject=subject is not None,
+            has_single_template=self.subject_template is not None,
+            has_package_template=self.subject_template_package is not None,
+        )
         if subject:
             email_subject = subject
+            self.logger.debug("using_custom_subject", subject=subject)
         elif len(files) == 1 and self.subject_template:
             email_subject = create_email_subject(files, self.subject_template)
+            self.logger.debug("using_single_file_template", template=self.subject_template)
         elif len(files) > 1 and self.subject_template_package:
             email_subject = create_email_subject(files, self.subject_template_package)
+            self.logger.debug("using_package_template", template=self.subject_template_package)
         else:
             email_subject = create_email_subject(files)
+            self.logger.debug("using_default_subject", subject=email_subject)
 
         # Split files by size if needed
+        self.logger.debug(
+            "splitting_files",
+            num_files=len(files),
+            max_email_size_mb=self.max_email_size_mb,
+        )
         try:
             file_groups = split_files_by_size(files, self.max_email_size_mb)
+            self.logger.debug(
+                "files_split_result",
+                num_groups=len(file_groups),
+                group_sizes=[len(g) for g in file_groups],
+            )
         except ValueError as e:
             self.logger.error("file_size_error", error=str(e))
             return False
@@ -369,14 +505,35 @@ class EmailSender:
                     group_subject = email_subject
                     if len(file_groups) > 1:
                         group_subject = f"{email_subject} (part {i}/{len(file_groups)})"
+                        self.logger.debug(
+                            "adjusting_subject_for_multipart",
+                            original_subject=email_subject,
+                            adjusted_subject=group_subject,
+                            part_num=i,
+                            total_parts=len(file_groups),
+                        )
+
+                    group_size = calculate_email_size(file_group)
+                    self.logger.debug(
+                        "sending_email_group",
+                        email_num=i,
+                        total_emails=len(file_groups),
+                        group_size=len(file_group),
+                        group_size_bytes=group_size,
+                        files=[str(f) for f in file_group],
+                        subject=group_subject,
+                        from_address=self.from_address,
+                        recipient=recipient,
+                    )
 
                     msg = create_email_message(
-                        self.smtp_user,
+                        self.from_address,
                         recipient,
                         group_subject,
                         file_group,
                     )
 
+                    self.logger.debug("sending_message_via_smtp", email_num=i)
                     smtp.send_message(msg)
                     self.logger.info(
                         "email_sent",

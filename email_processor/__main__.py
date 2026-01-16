@@ -340,6 +340,7 @@ def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | N
     smtp_server = smtp_cfg.get("server")
     smtp_port = int(smtp_cfg.get("port", 587))
     smtp_user = smtp_cfg.get("user") or cfg.get("imap", {}).get("user")
+    from_address = smtp_cfg.get("from_address")
     use_tls = smtp_cfg.get("use_tls", True)
     use_ssl = smtp_cfg.get("use_ssl", False)
     max_email_size_mb = float(smtp_cfg.get("max_email_size", 25))
@@ -359,6 +360,13 @@ def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | N
             console.print("[red]Error:[/red] 'smtp.user' or 'imap.user' is required in config.yaml")
         else:
             print("Error: 'smtp.user' or 'imap.user' is required in config.yaml")
+        return 1
+
+    if not from_address:
+        if console:
+            console.print("[red]Error:[/red] 'smtp.from_address' is required in config.yaml")
+        else:
+            print("Error: 'smtp.from_address' is required in config.yaml")
         return 1
 
     # Get recipient
@@ -390,6 +398,7 @@ def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | N
         smtp_port=smtp_port,
         smtp_user=smtp_user,
         smtp_password=password,
+        from_address=from_address,
         use_tls=use_tls,
         use_ssl=use_ssl,
         max_email_size_mb=max_email_size_mb,

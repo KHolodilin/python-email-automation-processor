@@ -44,6 +44,7 @@ class TestSMTPIntegration(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
         )
         storage = SentFilesStorage(self.temp_dir)
 
@@ -81,6 +82,7 @@ class TestSMTPIntegration(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
             max_email_size_mb=0.1,  # Small limit to force splitting
         )
 
@@ -122,6 +124,7 @@ class TestSMTPIntegration(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
             subject_template="File: {filename}",
             subject_template_package="Package: {file_count} files",
         )
@@ -153,6 +156,7 @@ class TestSMTPIntegration(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
         )
 
         test_file = Path(self.temp_dir) / "test.pdf"
@@ -175,6 +179,7 @@ class TestSMTPIntegration(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
             max_email_size_mb=1.0,
         )
 

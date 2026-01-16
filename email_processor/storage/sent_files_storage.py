@@ -164,11 +164,19 @@ class SentFilesStorage:
         Returns:
             True if file hash is found in storage, False otherwise
         """
+        logger = get_logger()
+        logger.debug("checking_if_file_sent", file=str(file_path), day=day_str)
         file_hash = self.get_file_hash(file_path)
         hashes = load_sent_hashes_for_day(self.root_dir, day_str, self.cache)
         is_sent = file_hash in hashes
+        logger.debug(
+            "file_sent_check_result",
+            file=str(file_path),
+            hash=file_hash[:16] + "...",
+            is_sent=is_sent,
+            total_hashes_in_storage=len(hashes),
+        )
         if is_sent:
-            logger = get_logger()
             logger.warning("file_already_sent", file=str(file_path), hash=file_hash[:16] + "...")
         return is_sent
 
@@ -179,9 +187,20 @@ class SentFilesStorage:
             file_path: Path to the file to mark as sent
             day_str: Date string in format YYYY-MM-DD
         """
-        file_hash = self.get_file_hash(file_path)
-        save_sent_hash_for_day(self.root_dir, day_str, file_hash, self.cache)
         logger = get_logger()
+        logger.debug("marking_file_as_sent", file=str(file_path), day=day_str)
+        file_hash = self.get_file_hash(file_path)
+        hashes_before = load_sent_hashes_for_day(self.root_dir, day_str, self.cache)
+        save_sent_hash_for_day(self.root_dir, day_str, file_hash, self.cache)
+        hashes_after = load_sent_hashes_for_day(self.root_dir, day_str, self.cache)
+        logger.debug(
+            "file_marked_as_sent_debug",
+            file=str(file_path),
+            hash=file_hash[:16] + "...",
+            hashes_before_count=len(hashes_before),
+            hashes_after_count=len(hashes_after),
+            was_new=file_hash not in hashes_before,
+        )
         logger.info("file_marked_as_sent", file=str(file_path), hash=file_hash[:16] + "...")
 
     def cleanup_old(self, keep_days: int) -> None:
