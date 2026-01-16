@@ -3,6 +3,7 @@
 import argparse
 import logging
 import shutil
+import stat
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,8 @@ try:
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
+
+import keyring
 
 from email_processor import (
     CONFIG_FILE,
@@ -88,6 +91,21 @@ def main() -> int:
     )
     parser.add_argument(
         "--clear-passwords", action="store_true", help="Clear saved passwords from keyring"
+    )
+    parser.add_argument(
+        "--set-password",
+        action="store_true",
+        help="Set password for IMAP user from password file",
+    )
+    parser.add_argument(
+        "--password-file",
+        type=str,
+        help="Path to file containing password (required with --set-password)",
+    )
+    parser.add_argument(
+        "--remove-password-file",
+        action="store_true",
+        help="Remove password file after reading (use with --password-file)",
     )
     parser.add_argument(
         "--dry-run",
@@ -199,6 +217,123 @@ def main() -> int:
                 print("Error: 'imap.user' is missing in config.yaml")
             return 1
         clear_passwords(KEYRING_SERVICE_NAME, user)
+    elif args.set_password:
+        # Set password from file
+        user = cfg.get("imap", {}).get("user")
+        if not user:
+            if console:
+                console.print("[red]Error:[/red] 'imap.user' is missing in config.yaml")
+            else:
+                print("Error: 'imap.user' is missing in config.yaml")
+            return 1
+
+        if not args.password_file:
+            if console:
+                console.print("[red]Error:[/red] --password-file is required with --set-password")
+            else:
+                print("Error: --password-file is required with --set-password")
+            return 1
+
+        # Read password from file
+        password_file = Path(args.password_file)
+        if not password_file.exists():
+            if console:
+                console.print(f"[red]Error:[/red] Password file not found: {password_file}")
+            else:
+                print(f"Error: Password file not found: {password_file}")
+            return 1
+
+        # Check file permissions (Unix only)
+        if sys.platform != "win32":
+            try:
+                file_stat = password_file.stat()
+                file_mode = stat.filemode(file_stat.st_mode)
+                # Check if file is readable by others (group or world)
+                if file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH):
+                    if console:
+                        console.print(
+                            f"[yellow]Warning:[/yellow] Password file has open permissions: {file_mode}. "
+                            "Consider using chmod 600 for security."
+                        )
+                    else:
+                        print(
+                            f"Warning: Password file has open permissions: {file_mode}. "
+                            "Consider using chmod 600 for security."
+                        )
+            except Exception:
+                pass  # Ignore permission check errors
+
+        try:
+            # Read password from file (first line, strip whitespace)
+            with open(password_file, encoding="utf-8") as f:
+                password = f.readline().strip()
+        except PermissionError:
+            if console:
+                console.print(
+                    f"[red]Error:[/red] Permission denied reading password file: {password_file}"
+                )
+            else:
+                print(f"Error: Permission denied reading password file: {password_file}")
+            return 1
+        except Exception as e:
+            if console:
+                console.print(f"[red]Error:[/red] Failed to read password file: {e}")
+            else:
+                print(f"Error: Failed to read password file: {e}")
+            return 1
+
+        if not password:
+            if console:
+                console.print("[red]Error:[/red] Password file is empty")
+            else:
+                print("Error: Password file is empty")
+            return 1
+
+        # Save password to keyring
+        try:
+            from email_processor.security.encryption import encrypt_password
+
+            encrypted_password = encrypt_password(password, config_path)
+            keyring.set_password(KEYRING_SERVICE_NAME, user, encrypted_password)
+            if console:
+                console.print(f"[green]✓[/green] Password saved for {user}")
+            else:
+                print(f"Password saved for {user}")
+        except Exception as e:
+            # Try saving unencrypted as fallback
+            try:
+                keyring.set_password(KEYRING_SERVICE_NAME, user, password)
+                if console:
+                    console.print(
+                        f"[yellow]Warning:[/yellow] Password saved unencrypted (encryption failed: {e})"
+                    )
+                    console.print(f"[green]✓[/green] Password saved for {user}")
+                else:
+                    print(f"Warning: Password saved unencrypted (encryption failed: {e})")
+                    print(f"Password saved for {user}")
+            except Exception as e2:
+                if console:
+                    console.print(f"[red]Error:[/red] Failed to save password: {e2}")
+                else:
+                    print(f"Error: Failed to save password: {e2}")
+                return 1
+
+        # Remove password file if requested
+        if args.remove_password_file:
+            try:
+                password_file.unlink()
+                if console:
+                    console.print(f"[green]✓[/green] Password file removed: {password_file}")
+                else:
+                    print(f"Password file removed: {password_file}")
+            except Exception as e:
+                if console:
+                    console.print(f"[yellow]Warning:[/yellow] Failed to remove password file: {e}")
+                else:
+                    print(f"Warning: Failed to remove password file: {e}")
+                # Don't fail the command if file removal fails
+
+        return 0
     elif args.send_file or (args.send_folder is not None) or cfg.get("smtp", {}).get("send_folder"):
         # Handle SMTP sending commands
         return _handle_smtp_send(cfg, args, console, config_path)

@@ -1,5 +1,6 @@
 """Tests for __main__ module."""
 
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from email_processor.__main__ import create_default_config, main
 from email_processor.config.constants import KEYRING_SERVICE_NAME
 from email_processor.processor.email_processor import ProcessingMetrics, ProcessingResult
+from email_processor.security.encryption import is_encrypted
 
 
 class TestMainEntryPoint(unittest.TestCase):
@@ -337,3 +339,209 @@ class TestMainEntryPoint(unittest.TestCase):
             result = main()
             self.assertEqual(result, 0)
             mock_create_config.assert_called_once_with("custom.yaml")
+
+
+class TestSetPassword(unittest.TestCase):
+    """Tests for --set-password command."""
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    @patch("keyring.set_password")
+    def test_set_password_from_file_success(self, mock_set_password, mock_load_config):
+        """Test setting password from file successfully."""
+        mock_load_config.return_value = {
+            "imap": {
+                "user": "test@example.com",
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("test_password_123\n")
+            password_file = f.name
+
+        try:
+            with patch(
+                "sys.argv", ["email_processor", "--set-password", "--password-file", password_file]
+            ):
+                result = main()
+                self.assertEqual(result, 0)
+                mock_set_password.assert_called_once()
+                # Check that password was saved (encrypted if cryptography available)
+                saved_password = mock_set_password.call_args[0][2]
+                # Password should be encrypted if cryptography is available
+                try:
+                    self.assertTrue(is_encrypted(saved_password))
+                except Exception:
+                    # If cryptography not available, password is saved unencrypted
+                    self.assertEqual(saved_password, "test_password_123")
+        finally:
+            Path(password_file).unlink(missing_ok=True)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    @patch("keyring.set_password")
+    def test_set_password_from_file_remove_file(self, mock_set_password, mock_load_config):
+        """Test setting password from file and removing file."""
+        mock_load_config.return_value = {
+            "imap": {
+                "user": "test@example.com",
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("test_password_123\n")
+            password_file = f.name
+
+        password_path = Path(password_file)
+        self.assertTrue(password_path.exists())
+
+        try:
+            with patch(
+                "sys.argv",
+                [
+                    "email_processor",
+                    "--set-password",
+                    "--password-file",
+                    password_file,
+                    "--remove-password-file",
+                ],
+            ):
+                result = main()
+                self.assertEqual(result, 0)
+                mock_set_password.assert_called_once()
+                # File should be removed
+                self.assertFalse(password_path.exists())
+        finally:
+            password_path.unlink(missing_ok=True)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    @patch("keyring.set_password")
+    def test_set_password_from_file_not_removed(self, mock_set_password, mock_load_config):
+        """Test that file is not removed without --remove-password-file flag."""
+        mock_load_config.return_value = {
+            "imap": {
+                "user": "test@example.com",
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("test_password_123\n")
+            password_file = f.name
+
+        password_path = Path(password_file)
+        self.assertTrue(password_path.exists())
+
+        try:
+            with patch(
+                "sys.argv", ["email_processor", "--set-password", "--password-file", password_file]
+            ):
+                result = main()
+                self.assertEqual(result, 0)
+                mock_set_password.assert_called_once()
+                # File should still exist
+                self.assertTrue(password_path.exists())
+        finally:
+            password_path.unlink(missing_ok=True)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    def test_set_password_file_not_exists(self, mock_load_config):
+        """Test error when password file does not exist."""
+        mock_load_config.return_value = {
+            "imap": {
+                "user": "test@example.com",
+            },
+        }
+
+        with patch(
+            "sys.argv",
+            ["email_processor", "--set-password", "--password-file", "/nonexistent/file"],
+        ):
+            result = main()
+            self.assertEqual(result, 1)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    def test_set_password_file_empty(self, mock_load_config):
+        """Test error when password file is empty."""
+        mock_load_config.return_value = {
+            "imap": {
+                "user": "test@example.com",
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("")  # Empty file
+            password_file = f.name
+
+        try:
+            with patch(
+                "sys.argv", ["email_processor", "--set-password", "--password-file", password_file]
+            ):
+                result = main()
+                self.assertEqual(result, 1)
+        finally:
+            Path(password_file).unlink(missing_ok=True)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    def test_set_password_without_password_file(self, mock_load_config):
+        """Test error when --password-file is not specified."""
+        mock_load_config.return_value = {
+            "imap": {
+                "user": "test@example.com",
+            },
+        }
+
+        with patch("sys.argv", ["email_processor", "--set-password"]):
+            result = main()
+            self.assertEqual(result, 1)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    def test_set_password_missing_user(self, mock_load_config):
+        """Test error when imap.user is missing in config."""
+        mock_load_config.return_value = {
+            "imap": {},
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("test_password\n")
+            password_file = f.name
+
+        try:
+            with patch(
+                "sys.argv", ["email_processor", "--set-password", "--password-file", password_file]
+            ):
+                result = main()
+                self.assertEqual(result, 1)
+        finally:
+            Path(password_file).unlink(missing_ok=True)
+
+    @patch("email_processor.__main__.ConfigLoader.load")
+    @patch("keyring.set_password")
+    def test_set_password_encryption_fallback(self, mock_set_password, mock_load_config):
+        """Test fallback to unencrypted password when encryption fails."""
+        mock_load_config.return_value = {
+            "imap": {
+                "user": "test@example.com",
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("test_password_123\n")
+            password_file = f.name
+
+        try:
+            # Mock encryption to fail
+            with patch(
+                "email_processor.security.encryption.encrypt_password",
+                side_effect=Exception("Encryption error"),
+            ):
+                with patch(
+                    "sys.argv",
+                    ["email_processor", "--set-password", "--password-file", password_file],
+                ):
+                    result = main()
+                    self.assertEqual(result, 0)
+                    # Should be called once with unencrypted password (fallback)
+                    self.assertEqual(mock_set_password.call_count, 1)
+                    # Call should be with unencrypted password
+                    call_password = mock_set_password.call_args[0][2]
+                    self.assertEqual(call_password, "test_password_123")
+        finally:
+            Path(password_file).unlink(missing_ok=True)
