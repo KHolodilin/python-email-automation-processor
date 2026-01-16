@@ -266,7 +266,10 @@ def main() -> int:
         try:
             # Read password from file (first line, strip whitespace)
             with open(password_file, encoding="utf-8") as f:
-                password = f.readline().strip()
+                raw_line = f.readline()
+                password = raw_line.rstrip(
+                    "\n\r"
+                )  # Only remove line endings, preserve leading/trailing spaces
         except PermissionError:
             if console:
                 console.print(
@@ -288,6 +291,12 @@ def main() -> int:
             else:
                 print("Error: Password file is empty")
             return 1
+
+        # Log password length for debugging (without showing actual password)
+        logger = get_logger()
+        logger.debug(
+            "password_read_from_file", password_length=len(password), file_path=str(password_file)
+        )
 
         # Save password to keyring
         try:

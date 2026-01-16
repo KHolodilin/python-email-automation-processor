@@ -31,6 +31,9 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
         if is_encrypted(stored_password):
             try:
                 password = decrypt_password(stored_password, config_path)
+                logger.debug(
+                    "password_decrypted_length", password_length=len(password), user=imap_user
+                )
                 logger.info(
                     "password_retrieved_decrypted",
                     user=imap_user,
