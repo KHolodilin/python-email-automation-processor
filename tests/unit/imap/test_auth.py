@@ -145,6 +145,65 @@ class TestIMAPPassword(unittest.TestCase):
         IMAPAuth.clear_passwords("test-service", "user@example.com")
         self.assertGreater(mock_delete.call_count, 0)
 
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    @patch("email_processor.imap.auth.keyring.get_password")
+    @patch("email_processor.imap.auth.keyring.set_password")
+    def test_get_password_decryption_fails_different_config_path(self, mock_set, mock_get):
+        """Test that decryption fails when config_path differs between save and retrieve.
+
+        This test verifies the bug fix where saving password with one config_path
+        but retrieving with different config_path (or None) causes decryption failure.
+        """
+        from email_processor.security.encryption import encrypt_password
+
+        config_path1 = "/path/to/config1.yaml"
+        config_path2 = "/path/to/config2.yaml"
+        password = "test_password_xyz"
+
+        # Simulate password saved with config_path1
+        encrypted_password = encrypt_password(password, config_path1)
+        mock_get.return_value = encrypted_password
+
+        # Try to get password with config_path2 - should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            get_imap_password("test@example.com", config_path=config_path2)
+
+        self.assertIn("Failed to decrypt", str(context.exception))
+        self.assertIn("--clear-passwords", str(context.exception))
+
+        # Get password with same config_path1 - should succeed
+        password_retrieved = get_imap_password("test@example.com", config_path=config_path1)
+        self.assertEqual(password, password_retrieved)
+
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    @patch("email_processor.imap.auth.keyring.get_password")
+    @patch("email_processor.imap.auth.keyring.set_password")
+    def test_get_password_decryption_fails_none_vs_config_path(self, mock_set, mock_get):
+        """Test that decryption fails when password saved with config_path but retrieved with None.
+
+        This test verifies the bug where saving password with config_path
+        but retrieving with None (default) causes decryption failure.
+        """
+        from email_processor.security.encryption import encrypt_password
+
+        config_path = "/path/to/config.yaml"
+        password = "test_password_def"
+
+        # Simulate password saved with config_path
+        encrypted_password = encrypt_password(password, config_path)
+        mock_get.return_value = encrypted_password
+
+        # Try to get password with None (default) - should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            get_imap_password("test@example.com", config_path=None)
+
+        self.assertIn("Failed to decrypt", str(context.exception))
+        self.assertIn("--clear-passwords", str(context.exception))
+
+        # Get password with same config_path - should succeed
+        password_retrieved = get_imap_password("test@example.com", config_path=config_path)
+        self.assertEqual(password, password_retrieved)
+
 
 class TestClearPasswords(unittest.TestCase):
     """Tests for clear_passwords function."""

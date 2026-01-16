@@ -89,6 +89,53 @@ class TestEncryption(unittest.TestCase):
         with self.assertRaises(ValueError):
             decrypt_password(encrypted)
 
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    def test_encrypt_decrypt_different_config_paths_fail(self):
+        """Test that encryption/decryption fails with different config paths.
+
+        This test verifies the bug fix where using different config_path
+        during encryption and decryption causes decryption to fail.
+        """
+        password = "test_password_789"
+        config_path1 = "/path/to/config1.yaml"
+        config_path2 = "/path/to/config2.yaml"
+
+        # Encrypt with config_path1
+        encrypted = encrypt_password(password, config_path1)
+
+        # Try to decrypt with config_path2 - should fail
+        with self.assertRaises(ValueError) as context:
+            decrypt_password(encrypted, config_path2)
+
+        self.assertIn("decrypt", str(context.exception).lower())
+
+        # Decrypt with same config_path1 - should succeed
+        decrypted = decrypt_password(encrypted, config_path1)
+        self.assertEqual(password, decrypted)
+
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    def test_encrypt_decrypt_none_vs_config_path_fail(self):
+        """Test that encryption with config_path and decryption with None fails.
+
+        This test verifies the bug where encrypting with config_path
+        but decrypting with None (default) causes decryption to fail.
+        """
+        password = "test_password_abc"
+        config_path = "/path/to/config.yaml"
+
+        # Encrypt with config_path
+        encrypted = encrypt_password(password, config_path)
+
+        # Try to decrypt with None (default) - should fail
+        with self.assertRaises(ValueError) as context:
+            decrypt_password(encrypted, None)
+
+        self.assertIn("decrypt", str(context.exception).lower())
+
+        # Decrypt with same config_path - should succeed
+        decrypted = decrypt_password(encrypted, config_path)
+        self.assertEqual(password, decrypted)
+
 
 if __name__ == "__main__":
     unittest.main()
