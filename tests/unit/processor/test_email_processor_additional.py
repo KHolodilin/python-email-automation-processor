@@ -66,8 +66,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         from email_processor.processor.email_processor import ProcessingMetrics
 
         metrics = ProcessingMetrics()
-        result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
         self.assertEqual(result, "skipped")
+        self.assertEqual(blocked, 0)
 
     def test_process_email_header_parse_error(self):
         """Test _process_email when header parsing fails."""
@@ -84,8 +85,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
 
     def test_process_email_target_folder_create_error(self):
         """Test _process_email when target folder creation fails."""
@@ -100,8 +102,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
 
     def test_process_email_message_body_empty(self):
         """Test _process_email when message body is empty."""
@@ -116,8 +119,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         from email_processor.processor.email_processor import ProcessingMetrics
 
         metrics = ProcessingMetrics()
-        result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
         self.assertEqual(result, "skipped")
+        self.assertEqual(blocked, 0)
 
     def test_process_email_message_parse_error(self):
         """Test _process_email when message parsing fails."""
@@ -136,8 +140,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
 
     def test_process_email_processed_uid_save_error(self):
         """Test _process_email when saving processed UID fails."""
@@ -157,8 +162,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
 
     def test_process_email_archive_error(self):
         """Test _process_email when archiving fails."""
@@ -178,9 +184,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             # Should still return "skipped" (no attachments)
             self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
 
     def test_process_email_with_attachment_success(self):
         """Test _process_email successfully processes email with attachment."""
@@ -210,9 +217,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         from email_processor.processor.email_processor import ProcessingMetrics
 
         metrics = ProcessingMetrics()
-        result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
         # Should process successfully
         self.assertEqual(result, "processed")
+        self.assertEqual(blocked, 0)
 
         # Check file was created
         invoices_dir = Path(self.temp_dir) / "downloads" / "invoices"
@@ -251,9 +259,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             # Should return "error" if attachment processing fails
             self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
 
     def test_process_email_message_walk_error(self):
         """Test _process_email when message.walk() fails."""
@@ -295,8 +304,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             from email_processor.processor.email_processor import ProcessingMetrics
 
             metrics = ProcessingMetrics()
-            result = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
 
     def test_process_email_skip_non_allowed_false(self):
         """Test _process_email when skip_non_allowed_as_processed is False."""
@@ -316,8 +326,9 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         from email_processor.processor.email_processor import ProcessingMetrics
 
         metrics = ProcessingMetrics()
-        result = processor._process_email(mock_mail, b"1", {}, False, metrics)
+        result, blocked = processor._process_email(mock_mail, b"1", {}, False, metrics)
         self.assertEqual(result, "skipped")
+        self.assertEqual(blocked, 0)
         # Should not save UID when skip_non_allowed_as_processed is False
 
     def test_process_email_archive_only_mapped_false(self):
@@ -340,9 +351,10 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         from email_processor.processor.email_processor import ProcessingMetrics
 
         metrics = ProcessingMetrics()
-        result = processor._process_email(mock_mail, b"1", {}, False, metrics)
+        result, blocked = processor._process_email(mock_mail, b"1", {}, False, metrics)
         # Should not archive when archive_only_mapped is False and no mapped folder
         self.assertEqual(result, "skipped")
+        self.assertEqual(blocked, 0)
 
     def test_process_file_stats_collection(self):
         """Test file statistics collection in process method."""

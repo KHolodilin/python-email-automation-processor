@@ -96,6 +96,7 @@ class ProcessingResult:
     processed: int
     skipped: int
     errors: int
+    blocked: int = 0  # Number of emails with blocked attachments
     file_stats: Optional[dict[str, int]] = None
     metrics: ProcessingMetrics = field(default_factory=ProcessingMetrics)
 
@@ -164,13 +165,16 @@ class EmailProcessor:
         )
         self.uid_storage = UIDStorage(self.processed_dir)
 
-    def process(self, dry_run: bool = False, mock_mode: bool = False) -> ProcessingResult:
+    def process(
+        self, dry_run: bool = False, mock_mode: bool = False, config_path: Optional[str] = None
+    ) -> ProcessingResult:
         """
         Process emails and download attachments.
 
         Args:
             dry_run: If True, simulate processing without downloading or archiving
             mock_mode: If True, use mock IMAP client instead of real connection
+            config_path: Optional path to config file for encryption key generation
 
         Returns:
             ProcessingResult with statistics and performance metrics
@@ -222,17 +226,21 @@ class EmailProcessor:
         else:
             # Get IMAP password for real connection
             try:
-                imap_password = get_imap_password(self.imap_user)
+                imap_password = get_imap_password(self.imap_user, config_path=config_path)
             except ValueError as e:
                 self.logger.error("password_error", error=str(e), error_type=type(e).__name__)
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except (KeyError, RuntimeError) as e:
                 self.logger.error(
                     "password_keyring_error", error=str(e), error_type=type(e).__name__
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except Exception as e:
                 self.logger.error(
                     "password_unexpected_error",
@@ -241,7 +249,9 @@ class EmailProcessor:
                     exc_info=True,
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
 
             # Connect to real IMAP server
             try:
@@ -257,11 +267,15 @@ class EmailProcessor:
                     "imap_connection_failed", error=str(e), error_type=type(e).__name__
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except (TimeoutError, OSError) as e:
                 self.logger.error("imap_network_error", error=str(e), error_type=type(e).__name__)
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except Exception as e:
                 self.logger.error(
                     "imap_connection_unexpected_error",
@@ -270,7 +284,9 @@ class EmailProcessor:
                     exc_info=True,
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
 
         start_date = get_start_date(self.start_days_back)
         self.logger.info("processing_started", start_date=start_date)
@@ -285,19 +301,25 @@ class EmailProcessor:
                 if status != "OK":
                     self.logger.error("inbox_select_failed", status=status)
                     metrics.total_time = time.time() - process_start_time
-                    return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                    return ProcessingResult(
+                        processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                    )
             except imaplib.IMAP4.error as e:
                 self.logger.error(
                     "inbox_select_imap_error", error=str(e), error_type=type(e).__name__
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except (AttributeError, TypeError) as e:
                 self.logger.error(
                     "inbox_select_invalid_state", error=str(e), error_type=type(e).__name__
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except Exception as e:
                 self.logger.error(
                     "inbox_select_unexpected_error",
@@ -306,7 +328,9 @@ class EmailProcessor:
                     exc_info=True,
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
 
             # Search emails
             try:
@@ -317,19 +341,25 @@ class EmailProcessor:
                 if status != "OK":
                     self.logger.error("email_search_error", status=status)
                     metrics.total_time = time.time() - process_start_time
-                    return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                    return ProcessingResult(
+                        processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                    )
             except imaplib.IMAP4.error as e:
                 self.logger.error(
                     "email_search_imap_error", error=str(e), error_type=type(e).__name__
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except (AttributeError, TypeError) as e:
                 self.logger.error(
                     "email_search_invalid_state", error=str(e), error_type=type(e).__name__
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
             except Exception as e:
                 self.logger.error(
                     "email_search_unexpected_error",
@@ -338,7 +368,9 @@ class EmailProcessor:
                     exc_info=True,
                 )
                 metrics.total_time = time.time() - process_start_time
-                return ProcessingResult(processed=0, skipped=0, errors=0, metrics=metrics)
+                return ProcessingResult(
+                    processed=0, skipped=0, errors=0, blocked=0, metrics=metrics
+                )
 
             email_ids = messages[0].split() if messages and messages[0] else []
             self.logger.info("emails_found", count=len(email_ids))
@@ -360,23 +392,30 @@ class EmailProcessor:
             else:
                 pbar = email_iter
 
+            blocked_count = 0
             for msg_id in pbar:
                 try:
                     email_start = time.time()
-                    result = self._process_email(mail, msg_id, processed_cache, dry_run, metrics)
+                    result, blocked_in_email = self._process_email(
+                        mail, msg_id, processed_cache, dry_run, metrics
+                    )
                     email_time = time.time() - email_start
                     metrics.per_email_time.append(email_time)
                     if result == "processed":
                         processed_count += 1
                     elif result == "skipped":
                         skipped_count += 1
+                        blocked_count += blocked_in_email
                     elif result == "error":
                         error_count += 1
 
                     # Update progress bar description with current stats
                     if self.show_progress and hasattr(pbar, "set_postfix"):
                         pbar.set_postfix(
-                            processed=processed_count, skipped=skipped_count, errors=error_count
+                            processed=processed_count,
+                            skipped=skipped_count,
+                            errors=error_count,
+                            blocked=blocked_count,
                         )
                 except imaplib.IMAP4.error as e:
                     msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
@@ -427,6 +466,7 @@ class EmailProcessor:
                 processed=processed_count,
                 skipped=skipped_count,
                 errors=error_count,
+                blocked=blocked_count,
             )
 
             # Collect file statistics from all folders in topic_mapping
@@ -467,6 +507,7 @@ class EmailProcessor:
                 processed=processed_count,
                 skipped=skipped_count,
                 errors=error_count,
+                blocked=blocked_count,
                 file_stats=file_stats,
                 metrics=metrics,
             )
@@ -488,7 +529,7 @@ class EmailProcessor:
         processed_cache: dict[str, set[str]],
         dry_run: bool,
         metrics: ProcessingMetrics,
-    ) -> str:
+    ) -> tuple[str, int]:
         """
         Process a single email message.
 
@@ -500,7 +541,9 @@ class EmailProcessor:
             metrics: Performance metrics to update
 
         Returns:
-            "processed", "skipped", or "error"
+            Tuple of (result: str, blocked_count: int) where:
+            - result is "processed", "skipped", or "error"
+            - blocked_count is number of blocked attachments in this email
         """
         # Fetch UID
         try:
@@ -514,19 +557,19 @@ class EmailProcessor:
                     msg_id=msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
                     status=status,
                 )
-                return "skipped"
+                return ("skipped", 0)
         except imaplib.IMAP4.error as e:
             msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
             self.logger.warning(
                 "uid_fetch_imap_error", msg_id=msg_id_str, error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
         except (AttributeError, IndexError, TypeError) as e:
             msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
             self.logger.warning(
                 "uid_fetch_data_error", msg_id=msg_id_str, error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
         except Exception as e:
             msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
             self.logger.warning(
@@ -535,7 +578,7 @@ class EmailProcessor:
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return "error"
+            return ("error", 0)
 
         try:
             raw = (
@@ -550,13 +593,13 @@ class EmailProcessor:
                     "uid_extraction_failed",
                     msg_id=msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
                 )
-                return "skipped"
+                return ("skipped", 0)
         except (AttributeError, IndexError, UnicodeDecodeError) as e:
             msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
             self.logger.warning(
                 "uid_parse_error", msg_id=msg_id_str, error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
         except Exception as e:
             msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
             self.logger.warning(
@@ -565,7 +608,7 @@ class EmailProcessor:
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return "error"
+            return ("error", 0)
 
         uid_logger = get_logger(uid=uid)
 
@@ -580,18 +623,18 @@ class EmailProcessor:
             metrics.imap_operation_times.append(time.time() - imap_start)
             if status != "OK" or not header_data or not header_data[0]:
                 uid_logger.debug("header_fetch_failed", status=status)
-                return "skipped"
+                return ("skipped", 0)
         except imaplib.IMAP4.error as e:
             uid_logger.warning("header_fetch_imap_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except (AttributeError, IndexError, TypeError) as e:
             uid_logger.warning("header_fetch_data_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.warning(
                 "header_fetch_unexpected_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
 
         try:
             header_bytes = (
@@ -599,19 +642,19 @@ class EmailProcessor:
             )
             if not header_bytes:
                 uid_logger.debug("header_empty")
-                return "skipped"
+                return ("skipped", 0)
             header_msg = message_from_bytes(header_bytes)
         except (email.errors.MessageParseError, UnicodeDecodeError) as e:
             uid_logger.warning("header_parse_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except (AttributeError, IndexError, TypeError) as e:
             uid_logger.warning("header_parse_data_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.warning(
                 "header_parse_unexpected_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
 
         sender = parseaddr(header_msg.get("From", ""))[1]
         subject = decode_mime_header_value(header_msg.get("Subject", "(no subject)"))
@@ -624,7 +667,7 @@ class EmailProcessor:
             processed_for_day = load_processed_for_day(self.processed_dir, day_str, processed_cache)
             if uid in processed_for_day:
                 uid_logger.debug("already_processed")
-                return "skipped"
+                return ("skipped", 0)
         except (OSError, PermissionError) as e:
             uid_logger.error(
                 "processed_uids_load_io_error",
@@ -632,7 +675,7 @@ class EmailProcessor:
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.error(
                 "processed_uids_load_unexpected_error",
@@ -640,7 +683,7 @@ class EmailProcessor:
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return "error"
+            return ("error", 0)
 
         # Sender filter
         if not self.filter.is_allowed_sender(sender):
@@ -660,7 +703,7 @@ class EmailProcessor:
                         error=str(e),
                         error_type=type(e).__name__,
                     )
-            return "skipped"
+            return ("skipped", 0)
 
         # Folder determination
         mapped_folder = None
@@ -675,12 +718,12 @@ class EmailProcessor:
             uid_logger.error(
                 "target_folder_create_io_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.error(
                 "target_folder_create_unexpected_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
 
         # Fetch full message
         try:
@@ -704,40 +747,41 @@ class EmailProcessor:
                         error=str(e),
                         error_type=type(e).__name__,
                     )
-                return "skipped"
+                return ("skipped", 0)
         except imaplib.IMAP4.error as e:
             uid_logger.error("message_fetch_imap_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except (AttributeError, IndexError, TypeError) as e:
             uid_logger.error("message_fetch_data_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.error(
                 "message_fetch_unexpected_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
 
         try:
             msg_bytes = full_data[0][1] if isinstance(full_data[0], tuple) else full_data[0]
             if not msg_bytes:
                 uid_logger.warning("message_body_empty")
-                return "skipped"
+                return ("skipped", 0)
             msg = message_from_bytes(msg_bytes)
         except (email.errors.MessageParseError, UnicodeDecodeError) as e:
             uid_logger.error("message_parse_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except (AttributeError, IndexError, TypeError) as e:
             uid_logger.error("message_parse_data_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.error(
                 "message_parse_unexpected_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
 
         # Process attachments
         attachments_found = False
         attachment_errors = []
+        blocked_attachments = 0
         try:
             for part in msg.walk():
                 if part.get_content_disposition() == "attachment":
@@ -751,14 +795,25 @@ class EmailProcessor:
                             if file_size:
                                 metrics.total_downloaded_size += file_size
                         else:
-                            attachment_errors.append("Failed to save attachment")
+                            # Check if it was blocked by extension filter (not a real error)
+                            filename_raw = part.get_filename()
+                            if filename_raw:
+                                filename = decode_mime_header_value(filename_raw)
+                                if filename and not self.attachment_handler.is_allowed_extension(
+                                    filename
+                                ):
+                                    blocked_attachments += 1
+                                else:
+                                    attachment_errors.append("Failed to save attachment")
+                            else:
+                                attachment_errors.append("Failed to save attachment")
                     elif result:
                         attachments_found = True
                     else:
                         attachment_errors.append("Failed to save attachment")
         except (AttributeError, TypeError) as e:
             uid_logger.error("message_walk_data_error", error=str(e), error_type=type(e).__name__)
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.error(
                 "message_walk_unexpected_error",
@@ -766,7 +821,7 @@ class EmailProcessor:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return "error"
+            return ("error", 0)
 
         # Save processed UID
         try:
@@ -775,12 +830,12 @@ class EmailProcessor:
             uid_logger.error(
                 "processed_uid_save_io_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
         except Exception as e:
             uid_logger.error(
                 "processed_uid_save_unexpected_error", error=str(e), error_type=type(e).__name__
             )
-            return "error"
+            return ("error", 0)
 
         # Archive
         if mapped_folder and self.archive_only_mapped:
@@ -803,9 +858,14 @@ class EmailProcessor:
                     )
 
         if attachments_found:
-            return "processed"
+            return ("processed", 0)
         elif attachment_errors:
-            return "error"
+            # Only return error if there were actual errors (not just blocked extensions)
+            return ("error", 0)
+        elif blocked_attachments > 0:
+            # If only blocked attachments (no real errors), treat as skipped
+            uid_logger.debug("attachments_blocked", count=blocked_attachments)
+            return ("skipped", blocked_attachments)
         else:
             uid_logger.debug("no_attachments")
-            return "skipped"
+            return ("skipped", 0)

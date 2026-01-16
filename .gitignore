@@ -314,3 +314,5 @@ htmlcov/
 /invoices
 /*.reg
 /sent_files
+/send_folder
+/.email_password

@@ -4,9 +4,18 @@ import logging
 import unittest
 from unittest.mock import patch
 
+# Check if cryptography is available
+try:
+    import cryptography.fernet  # noqa: F401
+
+    CRYPTOGRAPHY_AVAILABLE = True
+except (ImportError, OSError):
+    CRYPTOGRAPHY_AVAILABLE = False
+
 from email_processor.config.constants import KEYRING_SERVICE_NAME
 from email_processor.imap.auth import IMAPAuth, clear_passwords, get_imap_password
 from email_processor.logging.setup import setup_logging
+from email_processor.security.encryption import is_encrypted
 
 
 class TestIMAPPassword(unittest.TestCase):
@@ -40,7 +49,7 @@ class TestIMAPPassword(unittest.TestCase):
     @patch("builtins.input")
     @patch("getpass.getpass")
     def test_get_password_from_input_save(self, mock_getpass, mock_input, mock_set, mock_get):
-        """Test getting password from input and saving."""
+        """Test getting password from input and saving with real cryptography if available."""
         mock_get.return_value = None
         mock_getpass.return_value = "new_password"
         mock_input.return_value = "y"
@@ -48,7 +57,23 @@ class TestIMAPPassword(unittest.TestCase):
         password = get_imap_password("test@example.com")
 
         self.assertEqual(password, "new_password")
-        mock_set.assert_called_once_with(KEYRING_SERVICE_NAME, "test@example.com", "new_password")
+        # Password should be saved (encrypted if cryptography available, unencrypted as fallback)
+        mock_set.assert_called_once()
+        saved_password = mock_set.call_args[0][2]
+        self.assertEqual(mock_set.call_args[0][0], KEYRING_SERVICE_NAME)
+        self.assertEqual(mock_set.call_args[0][1], "test@example.com")
+
+        # If cryptography is available, password should be encrypted
+        if CRYPTOGRAPHY_AVAILABLE:
+            self.assertTrue(
+                is_encrypted(saved_password),
+                "Password should be encrypted when cryptography is available",
+            )
+        else:
+            # If cryptography is not available, password is saved unencrypted as fallback
+            self.assertEqual(
+                saved_password, "new_password", "Password should be saved unencrypted as fallback"
+            )
 
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
@@ -75,21 +100,31 @@ class TestIMAPPassword(unittest.TestCase):
         with self.assertRaises(ValueError):
             get_imap_password("test@example.com")
 
+    @patch("email_processor.imap.auth.encrypt_password")
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
     @patch("builtins.input")
     @patch("getpass.getpass")
-    def test_get_password_save_error(self, mock_getpass, mock_input, mock_set, mock_get):
+    def test_get_password_save_error(
+        self, mock_getpass, mock_input, mock_set, mock_get, mock_encrypt
+    ):
         """Test handling error when saving password to keyring."""
         mock_get.return_value = None
         mock_getpass.return_value = "new_password"
         mock_input.return_value = "y"
+        # Mock encryption to fail
+        mock_encrypt.side_effect = Exception("Encryption error")
+        # Fallback save also fails
         mock_set.side_effect = Exception("Keyring error")
 
         # Should still return password even if save fails
         password = get_imap_password("test@example.com")
         self.assertEqual(password, "new_password")
-        mock_set.assert_called_once()
+        # Should be called once with unencrypted password (fallback after encryption failed)
+        self.assertEqual(mock_set.call_count, 1)
+        # Call should be with unencrypted password (fallback)
+        call_password = mock_set.call_args[0][2]
+        self.assertEqual(call_password, "new_password")
 
     def test_imap_auth_get_password(self):
         """Test IMAPAuth.get_password method."""
@@ -109,6 +144,65 @@ class TestIMAPPassword(unittest.TestCase):
 
         IMAPAuth.clear_passwords("test-service", "user@example.com")
         self.assertGreater(mock_delete.call_count, 0)
+
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    @patch("email_processor.imap.auth.keyring.get_password")
+    @patch("email_processor.imap.auth.keyring.set_password")
+    def test_get_password_decryption_fails_different_config_path(self, mock_set, mock_get):
+        """Test that decryption fails when config_path differs between save and retrieve.
+
+        This test verifies the bug fix where saving password with one config_path
+        but retrieving with different config_path (or None) causes decryption failure.
+        """
+        from email_processor.security.encryption import encrypt_password
+
+        config_path1 = "/path/to/config1.yaml"
+        config_path2 = "/path/to/config2.yaml"
+        password = "test_password_xyz"
+
+        # Simulate password saved with config_path1
+        encrypted_password = encrypt_password(password, config_path1)
+        mock_get.return_value = encrypted_password
+
+        # Try to get password with config_path2 - should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            get_imap_password("test@example.com", config_path=config_path2)
+
+        self.assertIn("Failed to decrypt", str(context.exception))
+        self.assertIn("--clear-passwords", str(context.exception))
+
+        # Get password with same config_path1 - should succeed
+        password_retrieved = get_imap_password("test@example.com", config_path=config_path1)
+        self.assertEqual(password, password_retrieved)
+
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    @patch("email_processor.imap.auth.keyring.get_password")
+    @patch("email_processor.imap.auth.keyring.set_password")
+    def test_get_password_decryption_fails_none_vs_config_path(self, mock_set, mock_get):
+        """Test that decryption fails when password saved with config_path but retrieved with None.
+
+        This test verifies the bug where saving password with config_path
+        but retrieving with None (default) causes decryption failure.
+        """
+        from email_processor.security.encryption import encrypt_password
+
+        config_path = "/path/to/config.yaml"
+        password = "test_password_def"
+
+        # Simulate password saved with config_path
+        encrypted_password = encrypt_password(password, config_path)
+        mock_get.return_value = encrypted_password
+
+        # Try to get password with None (default) - should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            get_imap_password("test@example.com", config_path=None)
+
+        self.assertIn("Failed to decrypt", str(context.exception))
+        self.assertIn("--clear-passwords", str(context.exception))
+
+        # Get password with same config_path - should succeed
+        password_retrieved = get_imap_password("test@example.com", config_path=config_path)
+        self.assertEqual(password, password_retrieved)
 
 
 class TestClearPasswords(unittest.TestCase):

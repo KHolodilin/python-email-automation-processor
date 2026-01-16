@@ -3,6 +3,7 @@
 import argparse
 import logging
 import shutil
+import stat
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,8 @@ try:
 except ImportError:
     RICH_AVAILABLE = False
 
+import keyring
+
 from email_processor import (
     CONFIG_FILE,
     KEYRING_SERVICE_NAME,
@@ -25,6 +28,7 @@ from email_processor import (
 )
 from email_processor.imap.auth import get_imap_password
 from email_processor.logging.setup import get_logger, setup_logging
+from email_processor.security.encryption import encrypt_password
 from email_processor.smtp.sender import EmailSender
 from email_processor.storage.sent_files_storage import SentFilesStorage
 
@@ -90,6 +94,21 @@ def main() -> int:
         "--clear-passwords", action="store_true", help="Clear saved passwords from keyring"
     )
     parser.add_argument(
+        "--set-password",
+        action="store_true",
+        help="Set password for IMAP user from password file",
+    )
+    parser.add_argument(
+        "--password-file",
+        type=str,
+        help="Path to file containing password (required with --set-password)",
+    )
+    parser.add_argument(
+        "--remove-password-file",
+        action="store_true",
+        help="Remove password file after reading (use with --password-file)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Simulate processing without downloading or archiving",
@@ -118,7 +137,9 @@ def main() -> int:
     parser.add_argument(
         "--send-folder",
         type=str,
-        help="Send all new files from specified folder via email",
+        nargs="?",
+        const="",  # Use empty string to detect flag presence
+        help="Send all new files from specified folder via email (or use smtp.send_folder from config if not specified)",
     )
     parser.add_argument(
         "--recipient",
@@ -180,7 +201,7 @@ def main() -> int:
 
     # Log warning if SMTP section is missing (for backward compatibility)
     # Only warn if SMTP commands are not being used
-    if "smtp" not in cfg and not (args.send_file or args.send_folder):
+    if "smtp" not in cfg and not (args.send_file or args.send_folder is not None):
         logger = get_logger()
         logger.warning(
             "smtp_section_missing",
@@ -197,23 +218,150 @@ def main() -> int:
                 print("Error: 'imap.user' is missing in config.yaml")
             return 1
         clear_passwords(KEYRING_SERVICE_NAME, user)
-    elif args.send_file or args.send_folder:
+    elif args.set_password:
+        # Set password from file
+        user = cfg.get("imap", {}).get("user")
+        if not user:
+            if console:
+                console.print("[red]Error:[/red] 'imap.user' is missing in config.yaml")
+            else:
+                print("Error: 'imap.user' is missing in config.yaml")
+            return 1
+
+        if not args.password_file:
+            if console:
+                console.print("[red]Error:[/red] --password-file is required with --set-password")
+            else:
+                print("Error: --password-file is required with --set-password")
+            return 1
+
+        # Read password from file
+        password_file = Path(args.password_file)
+        if not password_file.exists():
+            if console:
+                console.print(f"[red]Error:[/red] Password file not found: {password_file}")
+            else:
+                print(f"Error: Password file not found: {password_file}")
+            return 1
+
+        # Check file permissions (Unix only)
+        if sys.platform != "win32":
+            try:
+                file_stat = password_file.stat()
+                file_mode = stat.filemode(file_stat.st_mode)
+                # Check if file is readable by others (group or world)
+                if file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH):
+                    if console:
+                        console.print(
+                            f"[yellow]Warning:[/yellow] Password file has open permissions: {file_mode}. "
+                            "Consider using chmod 600 for security."
+                        )
+                    else:
+                        print(
+                            f"Warning: Password file has open permissions: {file_mode}. "
+                            "Consider using chmod 600 for security."
+                        )
+            except Exception:
+                pass  # Ignore permission check errors
+
+        try:
+            # Read password from file (first line, strip whitespace)
+            with open(password_file, encoding="utf-8") as f:
+                raw_line = f.readline()
+                password = raw_line.rstrip(
+                    "\n\r"
+                )  # Only remove line endings, preserve leading/trailing spaces
+        except PermissionError:
+            if console:
+                console.print(
+                    f"[red]Error:[/red] Permission denied reading password file: {password_file}"
+                )
+            else:
+                print(f"Error: Permission denied reading password file: {password_file}")
+            return 1
+        except Exception as e:
+            if console:
+                console.print(f"[red]Error:[/red] Failed to read password file: {e}")
+            else:
+                print(f"Error: Failed to read password file: {e}")
+            return 1
+
+        if not password:
+            if console:
+                console.print("[red]Error:[/red] Password file is empty")
+            else:
+                print("Error: Password file is empty")
+            return 1
+
+        # Log password length for debugging (without showing actual password)
+        logger = get_logger()
+        logger.debug(
+            "password_read_from_file", password_length=len(password), file_path=str(password_file)
+        )
+
+        # Save password to keyring
+        try:
+            encrypted_password = encrypt_password(password, config_path)
+            keyring.set_password(KEYRING_SERVICE_NAME, user, encrypted_password)
+            if console:
+                console.print(f"[green]✓[/green] Password saved for {user}")
+            else:
+                print(f"Password saved for {user}")
+        except Exception as e:
+            # Try saving unencrypted as fallback
+            try:
+                keyring.set_password(KEYRING_SERVICE_NAME, user, password)
+                if console:
+                    console.print(
+                        f"[yellow]Warning:[/yellow] Password saved unencrypted (encryption failed: {e})"
+                    )
+                    console.print(f"[green]✓[/green] Password saved for {user}")
+                else:
+                    print(f"Warning: Password saved unencrypted (encryption failed: {e})")
+                    print(f"Password saved for {user}")
+            except Exception as e2:
+                if console:
+                    console.print(f"[red]Error:[/red] Failed to save password: {e2}")
+                else:
+                    print(f"Error: Failed to save password: {e2}")
+                return 1
+
+        # Remove password file if requested
+        if args.remove_password_file:
+            try:
+                password_file.unlink()
+                if console:
+                    console.print(f"[green]✓[/green] Password file removed: {password_file}")
+                else:
+                    print(f"Password file removed: {password_file}")
+            except Exception as e:
+                if console:
+                    console.print(f"[yellow]Warning:[/yellow] Failed to remove password file: {e}")
+                else:
+                    print(f"Warning: Failed to remove password file: {e}")
+                # Don't fail the command if file removal fails
+
+        return 0
+    elif args.send_file or args.send_folder is not None:
         # Handle SMTP sending commands
-        return _handle_smtp_send(cfg, args, console)
+        return _handle_smtp_send(cfg, args, console, config_path)
     else:
         try:
             processor = EmailProcessor(cfg)
             # If --dry-run-no-connect is set, enable both dry_run and mock_mode
             dry_run = args.dry_run or args.dry_run_no_connect
             mock_mode = args.dry_run_no_connect
-            result = processor.process(dry_run=dry_run, mock_mode=mock_mode)
+            result = processor.process(
+                dry_run=dry_run, mock_mode=mock_mode, config_path=config_path
+            )
 
             # Display results with rich if available
             if console:
                 _display_results_rich(result, console)
             else:
                 print(
-                    f"Processed: {result.processed}, Skipped: {result.skipped}, Errors: {result.errors}"
+                    f"Processed: {result.processed}, Skipped: {result.skipped}, "
+                    f"Blocked: {result.blocked}, Errors: {result.errors}"
                 )
         except KeyboardInterrupt:
             logging.info("Interrupted by user")
@@ -234,6 +382,7 @@ def _display_results_rich(result, console_instance: "Console") -> None:
 
     table.add_row("Processed", str(result.processed))
     table.add_row("Skipped", str(result.skipped))
+    table.add_row("Blocked", str(result.blocked))
     table.add_row(
         "Errors", str(result.errors) if result.errors == 0 else f"[red]{result.errors}[/red]"
     )
@@ -325,7 +474,9 @@ def _display_results_rich(result, console_instance: "Console") -> None:
         console_instance.print(metrics_table)
 
 
-def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | None") -> int:
+def _handle_smtp_send(
+    cfg: dict, args: argparse.Namespace, console: "Console | None", config_path: str
+) -> int:
     """Handle SMTP sending commands."""
     # Check SMTP config
     smtp_cfg = cfg.get("smtp")
@@ -384,7 +535,7 @@ def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | N
 
     # Get password
     try:
-        password = get_imap_password(smtp_user)
+        password = get_imap_password(smtp_user, config_path)
     except Exception as e:
         if console:
             console.print(f"[red]Error getting password:[/red] {e}")
@@ -458,9 +609,27 @@ def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | N
 
         return 0
 
-    elif args.send_folder:
+    elif args.send_folder is not None or smtp_cfg.get("send_folder"):
         # Send files from folder
-        folder_path = Path(args.send_folder)
+        # Use argument if provided (and not empty), otherwise use config value
+        # If --send-folder specified without argument, args.send_folder will be empty string
+        # Use config value in that case, otherwise use provided argument
+        folder_path_str = (
+            args.send_folder
+            if (args.send_folder and args.send_folder != "")
+            else smtp_cfg.get("send_folder")
+        )
+        if not folder_path_str:
+            if console:
+                console.print(
+                    "[red]Error:[/red] Folder not specified. Use --send-folder <path> or set smtp.send_folder in config.yaml"
+                )
+            else:
+                print(
+                    "Error: Folder not specified. Use --send-folder <path> or set smtp.send_folder in config.yaml"
+                )
+            return 1
+        folder_path = Path(folder_path_str)
         if not folder_path.exists():
             if console:
                 console.print(f"[red]Error:[/red] Folder not found: {folder_path}")

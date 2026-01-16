@@ -18,6 +18,7 @@ smtp:
   default_recipient: "recipient@example.com"  # default recipient email address (required)
   max_email_size: 25  # MB
   sent_files_dir: "sent_files"  # directory for storing sent file hashes
+  send_folder: "send_folder"  # Optional: default folder to send files from (can be overridden with --send-folder)
   # Optional: subject templates
   # subject_template: "File: {filename}"  # template for single file
   # subject_template_package: "Package of files - {date}"  # template for multiple files

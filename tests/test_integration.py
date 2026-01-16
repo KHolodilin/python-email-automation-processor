@@ -16,6 +16,14 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+# Check if cryptography is available
+try:
+    import cryptography.fernet  # noqa: F401
+
+    CRYPTOGRAPHY_AVAILABLE = True
+except (ImportError, OSError):
+    CRYPTOGRAPHY_AVAILABLE = False
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from email_processor import (
@@ -171,7 +179,9 @@ class TestIMAPPassword(unittest.TestCase):
     @patch("builtins.input")
     @patch("getpass.getpass")
     def test_get_password_from_input_save(self, mock_getpass, mock_input, mock_set, mock_get):
-        """Test getting password from input and saving."""
+        """Test getting password from input and saving with real cryptography if available."""
+        from email_processor.security.encryption import is_encrypted
+
         mock_get.return_value = None
         mock_getpass.return_value = "new_password"
         mock_input.return_value = "y"
@@ -179,7 +189,23 @@ class TestIMAPPassword(unittest.TestCase):
         password = get_imap_password("test@example.com")
 
         self.assertEqual(password, "new_password")
-        mock_set.assert_called_once_with(KEYRING_SERVICE_NAME, "test@example.com", "new_password")
+        # Password should be saved (encrypted if cryptography available, unencrypted as fallback)
+        mock_set.assert_called_once()
+        saved_password = mock_set.call_args[0][2]
+        self.assertEqual(mock_set.call_args[0][0], KEYRING_SERVICE_NAME)
+        self.assertEqual(mock_set.call_args[0][1], "test@example.com")
+
+        # If cryptography is available, password should be encrypted
+        if CRYPTOGRAPHY_AVAILABLE:
+            self.assertTrue(
+                is_encrypted(saved_password),
+                "Password should be encrypted when cryptography is available",
+            )
+        else:
+            # If cryptography is not available, password is saved unencrypted as fallback
+            self.assertEqual(
+                saved_password, "new_password", "Password should be saved unencrypted as fallback"
+            )
 
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
