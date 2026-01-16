@@ -164,13 +164,16 @@ class EmailProcessor:
         )
         self.uid_storage = UIDStorage(self.processed_dir)
 
-    def process(self, dry_run: bool = False, mock_mode: bool = False) -> ProcessingResult:
+    def process(
+        self, dry_run: bool = False, mock_mode: bool = False, config_path: Optional[str] = None
+    ) -> ProcessingResult:
         """
         Process emails and download attachments.
 
         Args:
             dry_run: If True, simulate processing without downloading or archiving
             mock_mode: If True, use mock IMAP client instead of real connection
+            config_path: Optional path to config file for encryption key generation
 
         Returns:
             ProcessingResult with statistics and performance metrics
@@ -222,7 +225,7 @@ class EmailProcessor:
         else:
             # Get IMAP password for real connection
             try:
-                imap_password = get_imap_password(self.imap_user, config_path=None)
+                imap_password = get_imap_password(self.imap_user, config_path=config_path)
             except ValueError as e:
                 self.logger.error("password_error", error=str(e), error_type=type(e).__name__)
                 metrics.total_time = time.time() - process_start_time

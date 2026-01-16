@@ -343,7 +343,9 @@ def main() -> int:
             # If --dry-run-no-connect is set, enable both dry_run and mock_mode
             dry_run = args.dry_run or args.dry_run_no_connect
             mock_mode = args.dry_run_no_connect
-            result = processor.process(dry_run=dry_run, mock_mode=mock_mode)
+            result = processor.process(
+                dry_run=dry_run, mock_mode=mock_mode, config_path=config_path
+            )
 
             # Display results with rich if available
             if console:
