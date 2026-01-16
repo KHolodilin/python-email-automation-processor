@@ -334,7 +334,7 @@ def main() -> int:
                 # Don't fail the command if file removal fails
 
         return 0
-    elif args.send_file or (args.send_folder is not None) or cfg.get("smtp", {}).get("send_folder"):
+    elif args.send_file or args.send_folder is not None:
         # Handle SMTP sending commands
         return _handle_smtp_send(cfg, args, console, config_path)
     else:
