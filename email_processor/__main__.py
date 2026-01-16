@@ -199,7 +199,7 @@ def main() -> int:
         clear_passwords(KEYRING_SERVICE_NAME, user)
     elif args.send_file or args.send_folder:
         # Handle SMTP sending commands
-        return _handle_smtp_send(cfg, args, console)
+        return _handle_smtp_send(cfg, args, console, config_path)
     else:
         try:
             processor = EmailProcessor(cfg)
@@ -325,7 +325,9 @@ def _display_results_rich(result, console_instance: "Console") -> None:
         console_instance.print(metrics_table)
 
 
-def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | None") -> int:
+def _handle_smtp_send(
+    cfg: dict, args: argparse.Namespace, console: "Console | None", config_path: str
+) -> int:
     """Handle SMTP sending commands."""
     # Check SMTP config
     smtp_cfg = cfg.get("smtp")
@@ -384,7 +386,7 @@ def _handle_smtp_send(cfg: dict, args: argparse.Namespace, console: "Console | N
 
     # Get password
     try:
-        password = get_imap_password(smtp_user)
+        password = get_imap_password(smtp_user, config_path)
     except Exception as e:
         if console:
             console.print(f"[red]Error getting password:[/red] {e}")

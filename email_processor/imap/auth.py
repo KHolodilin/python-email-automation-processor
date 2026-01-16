@@ -1,20 +1,68 @@
 """IMAP authentication with keyring support."""
 
 import getpass
+from typing import Optional
 
 import keyring
 
 from email_processor.config.constants import KEYRING_SERVICE_NAME
 from email_processor.logging.setup import get_logger
+from email_processor.security.encryption import (
+    decrypt_password,
+    encrypt_password,
+    is_encrypted,
+)
 
 
-def get_imap_password(imap_user: str) -> str:
-    """Get IMAP password from keyring or prompt user."""
+def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
+    """Get IMAP password from keyring or prompt user.
+
+    Args:
+        imap_user: IMAP username (email address)
+        config_path: Optional path to config file for encryption key generation
+
+    Returns:
+        Plain text password (decrypted if stored encrypted)
+    """
     logger = get_logger()
-    password = keyring.get_password(KEYRING_SERVICE_NAME, imap_user)
-    if password:
-        logger.info("password_retrieved", user=imap_user, service=KEYRING_SERVICE_NAME)
-        return password  # type: ignore[no-any-return]
+    stored_password = keyring.get_password(KEYRING_SERVICE_NAME, imap_user)
+    if stored_password:
+        # Check if password is encrypted
+        if is_encrypted(stored_password):
+            try:
+                password = decrypt_password(stored_password, config_path)
+                logger.info(
+                    "password_retrieved_decrypted",
+                    user=imap_user,
+                    service=KEYRING_SERVICE_NAME,
+                )
+                return password
+            except ValueError as e:
+                # Decryption failed - system characteristics may have changed
+                logger.warning(
+                    "password_decryption_failed",
+                    user=imap_user,
+                    error=str(e),
+                    hint="System characteristics may have changed. Password needs to be re-entered.",
+                )
+                # Fall through to prompt for new password
+            except Exception as e:
+                logger.error(
+                    "password_decryption_error",
+                    user=imap_user,
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+                # Fall through to prompt for new password
+        else:
+            # Old format - unencrypted password
+            logger.info(
+                "password_retrieved",
+                user=imap_user,
+                service=KEYRING_SERVICE_NAME,
+                encrypted=False,
+            )
+            return stored_password  # type: ignore[no-any-return]
 
     logger.info("password_not_found", user=imap_user)
     pw = getpass.getpass(f"Enter IMAP password for {imap_user}: ")
@@ -24,10 +72,27 @@ def get_imap_password(imap_user: str) -> str:
     answer = input("Save password to system storage (keyring)? [y/N]: ").strip().lower()
     if answer == "y":
         try:
-            keyring.set_password(KEYRING_SERVICE_NAME, imap_user, pw)
-            logger.info("password_saved", user=imap_user, service=KEYRING_SERVICE_NAME)
+            # Encrypt password before saving
+            encrypted_password = encrypt_password(pw, config_path)
+            keyring.set_password(KEYRING_SERVICE_NAME, imap_user, encrypted_password)
+            logger.info(
+                "password_saved_encrypted",
+                user=imap_user,
+                service=KEYRING_SERVICE_NAME,
+                encrypted=True,
+            )
         except Exception as e:
             logger.error("password_save_error", user=imap_user, error=str(e))
+            # Try saving unencrypted as fallback
+            try:
+                keyring.set_password(KEYRING_SERVICE_NAME, imap_user, pw)
+                logger.warning(
+                    "password_saved_unencrypted_fallback",
+                    user=imap_user,
+                    error=str(e),
+                )
+            except Exception as e2:
+                logger.error("password_save_fallback_error", user=imap_user, error=str(e2))
 
     return pw
 

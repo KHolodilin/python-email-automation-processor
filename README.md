@@ -19,7 +19,10 @@ Email Processor is a reliable, idempotent, and secure tool for automatic email p
 ### 🔐 Secure IMAP Password Management
 - Password is not stored in code or YAML
 - Saved in system storage (**Windows Credential Manager**, **macOS Keychain**, **Linux SecretService**)
+- **Passwords are encrypted** before storing in keyring using system-based key derivation
+- Encryption key is generated from system characteristics (MAC address, hostname, user ID) - never stored
 - On first run, the script will prompt for password and offer to save it
+- Backward compatible: automatically migrates unencrypted passwords on next save
 
 ### ⚙️ Configuration via `config.yaml`
 - **IMAP**: Download folder management, subject-based sorting rules (`topic_mapping`), allowed sender management, archive settings
@@ -176,6 +179,38 @@ Done. Deleted entries: 1
 ```
 
 5. On next normal mode run, the script will prompt for a new password.
+
+---
+
+## 🔒 Password Encryption
+
+Passwords stored in keyring are encrypted using a system-based encryption key:
+
+### How It Works
+- **Encryption key** is generated from system characteristics:
+  - MAC address of network interface
+  - Hostname
+  - User ID (Windows SID / Linux UID)
+  - Config file path hash
+  - Python version
+- **Key is never stored** - computed dynamically each time
+- **PBKDF2-HMAC-SHA256** with 100,000 iterations for key derivation
+- **Fernet (AES-128)** encryption for passwords
+
+### Security Benefits
+- ✅ Passwords encrypted even if keyring is compromised
+- ✅ Key cannot be stolen (not stored anywhere)
+- ✅ Automatic operation (no user input required)
+- ✅ Backward compatible with existing unencrypted passwords
+
+### Limitations
+- ⚠️ System changes (MAC address, hostname, user) require password re-entry
+- ⚠️ Cannot transfer passwords to another system
+- ⚠️ System reinstall requires password re-entry
+
+### Migration
+- Old unencrypted passwords are automatically encrypted on next save
+- If decryption fails (system changed), you'll be prompted to re-enter password
 
 ---
 

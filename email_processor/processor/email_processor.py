@@ -222,7 +222,7 @@ class EmailProcessor:
         else:
             # Get IMAP password for real connection
             try:
-                imap_password = get_imap_password(self.imap_user)
+                imap_password = get_imap_password(self.imap_user, config_path=None)
             except ValueError as e:
                 self.logger.error("password_error", error=str(e), error_type=type(e).__name__)
                 metrics.total_time = time.time() - process_start_time

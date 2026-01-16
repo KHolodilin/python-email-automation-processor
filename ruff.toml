@@ -64,6 +64,12 @@ unfixable = []
 "email_processor/smtp/sender.py" = [
     "PLC0415", # Import in function to avoid circular dependency
 ]
+"email_processor/security/fingerprint.py" = [
+    "PLC0415", # Import win32security inside try block (optional dependency)
+]
+"email_processor/security/encryption.py" = [
+    "PLC0415", # Import cryptography inside function (lazy import for optional dependency)
+]
 
 [lint.isort]
 known-first-party = ["email_processor"]
