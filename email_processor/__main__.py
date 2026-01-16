@@ -361,7 +361,8 @@ def main() -> int:
                 _display_results_rich(result, console)
             else:
                 print(
-                    f"Processed: {result.processed}, Skipped: {result.skipped}, Errors: {result.errors}"
+                    f"Processed: {result.processed}, Skipped: {result.skipped}, "
+                    f"Blocked: {result.blocked}, Errors: {result.errors}"
                 )
         except KeyboardInterrupt:
             logging.info("Interrupted by user")
@@ -382,6 +383,7 @@ def _display_results_rich(result, console_instance: "Console") -> None:
 
     table.add_row("Processed", str(result.processed))
     table.add_row("Skipped", str(result.skipped))
+    table.add_row("Blocked", str(result.blocked))
     table.add_row(
         "Errors", str(result.errors) if result.errors == 0 else f"[red]{result.errors}[/red]"
     )
