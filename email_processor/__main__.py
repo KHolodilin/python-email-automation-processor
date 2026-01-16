@@ -118,7 +118,9 @@ def main() -> int:
     parser.add_argument(
         "--send-folder",
         type=str,
-        help="Send all new files from specified folder via email",
+        nargs="?",
+        const="",  # Use empty string to detect flag presence
+        help="Send all new files from specified folder via email (or use smtp.send_folder from config if not specified)",
     )
     parser.add_argument(
         "--recipient",
@@ -180,7 +182,7 @@ def main() -> int:
 
     # Log warning if SMTP section is missing (for backward compatibility)
     # Only warn if SMTP commands are not being used
-    if "smtp" not in cfg and not (args.send_file or args.send_folder):
+    if "smtp" not in cfg and not (args.send_file or args.send_folder is not None):
         logger = get_logger()
         logger.warning(
             "smtp_section_missing",
@@ -197,7 +199,7 @@ def main() -> int:
                 print("Error: 'imap.user' is missing in config.yaml")
             return 1
         clear_passwords(KEYRING_SERVICE_NAME, user)
-    elif args.send_file or args.send_folder:
+    elif args.send_file or (args.send_folder is not None) or cfg.get("smtp", {}).get("send_folder"):
         # Handle SMTP sending commands
         return _handle_smtp_send(cfg, args, console, config_path)
     else:
@@ -460,9 +462,27 @@ def _handle_smtp_send(
 
         return 0
 
-    elif args.send_folder:
+    elif args.send_folder is not None or smtp_cfg.get("send_folder"):
         # Send files from folder
-        folder_path = Path(args.send_folder)
+        # Use argument if provided (and not empty), otherwise use config value
+        # If --send-folder specified without argument, args.send_folder will be empty string
+        # Use config value in that case, otherwise use provided argument
+        folder_path_str = (
+            args.send_folder
+            if (args.send_folder and args.send_folder != "")
+            else smtp_cfg.get("send_folder")
+        )
+        if not folder_path_str:
+            if console:
+                console.print(
+                    "[red]Error:[/red] Folder not specified. Use --send-folder <path> or set smtp.send_folder in config.yaml"
+                )
+            else:
+                print(
+                    "Error: Folder not specified. Use --send-folder <path> or set smtp.send_folder in config.yaml"
+                )
+            return 1
+        folder_path = Path(folder_path_str)
         if not folder_path.exists():
             if console:
                 console.print(f"[red]Error:[/red] Folder not found: {folder_path}")
