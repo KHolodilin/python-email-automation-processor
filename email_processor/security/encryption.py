@@ -23,7 +23,7 @@ def _get_fernet() -> type[Any]:
     except ImportError as e:
         raise ImportError(
             "cryptography package is required for password encryption. "
-            "Install it with: pip install cryptography>=41.0.0"
+            "Install it with: pip install cryptography>=40.0.0"
         ) from e
 
 
