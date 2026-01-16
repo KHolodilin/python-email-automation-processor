@@ -539,7 +539,7 @@ class TestSetPassword(unittest.TestCase):
         try:
             # Mock encryption to fail
             with patch(
-                "email_processor.security.encryption.encrypt_password",
+                "email_processor.__main__.encrypt_password",
                 side_effect=Exception("Encryption error"),
             ):
                 with patch(
