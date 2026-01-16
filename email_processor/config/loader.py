@@ -121,6 +121,15 @@ def validate_config(cfg: dict) -> None:
                         errors.append("'smtp.max_email_size' must be > 0")
                 except (ValueError, TypeError):
                     errors.append("'smtp.max_email_size' must be a number")
+            if "from_address" not in smtp or not smtp["from_address"]:
+                errors.append("'smtp.from_address' is required when smtp section is present")
+            else:
+                from_addr = smtp["from_address"]
+                if not isinstance(from_addr, str) or not from_addr:
+                    errors.append("'smtp.from_address' must be a non-empty string")
+                # Basic email validation
+                elif "@" not in from_addr or "." not in from_addr.split("@")[-1]:
+                    errors.append("'smtp.from_address' must be a valid email address")
             if "default_recipient" in smtp:
                 recipient = smtp["default_recipient"]
                 if not isinstance(recipient, str) or not recipient:

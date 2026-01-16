@@ -266,6 +266,7 @@ class TestEmailSender(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -286,6 +287,7 @@ class TestEmailSender(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -304,6 +306,7 @@ class TestEmailSender(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
             subject_template="File: {filename}",
         )
 
@@ -322,6 +325,7 @@ class TestEmailSender(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
         )
 
         result = sender.send_files([], "recipient@example.com")
@@ -339,6 +343,7 @@ class TestEmailSender(unittest.TestCase):
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
+            from_address="sender@example.com",
             max_email_size_mb=0.1,  # Small limit
         )
 
