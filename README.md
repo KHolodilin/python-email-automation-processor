@@ -428,6 +428,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+**Note:** If you're using 32-bit Python on Windows and encounter DLL errors with cryptography, you may need to install an older version:
+```bash
+pip install cryptography==40.0.2
+```
+Alternatively, use 64-bit Python for better compatibility.
+
 ### 3. Copy Configuration Template
 
 ```bash

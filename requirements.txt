@@ -4,7 +4,7 @@ keyring>=24.0
 structlog>=24.0.0
 tqdm>=4.66.0
 rich>=13.0.0
-cryptography>=41.0.0
+cryptography>=40.0.0  # Note: 32-bit Python may require older version (40.0.2), 64-bit Python supports >=41.0.0
 
 # Development dependencies
 pytest>=7.0.0
