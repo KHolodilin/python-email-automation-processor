@@ -39,13 +39,17 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
                 return password
             except ValueError as e:
                 # Decryption failed - system characteristics may have changed
-                logger.warning(
+                logger.error(
                     "password_decryption_failed",
                     user=imap_user,
                     error=str(e),
                     hint="System characteristics may have changed. Password needs to be re-entered.",
                 )
-                # Fall through to prompt for new password
+                raise ValueError(
+                    f"Failed to decrypt password for {imap_user}. "
+                    "System characteristics may have changed. "
+                    "Please clear saved password with --clear-passwords and re-enter it."
+                ) from e
             except Exception as e:
                 logger.error(
                     "password_decryption_error",
@@ -53,7 +57,10 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
                     error=str(e),
                     error_type=type(e).__name__,
                 )
-                # Fall through to prompt for new password
+                raise ValueError(
+                    f"Failed to decrypt password for {imap_user}. "
+                    "Please clear saved password with --clear-passwords and re-enter it."
+                ) from e
         else:
             # Old format - unencrypted password
             logger.info(
