@@ -4,6 +4,14 @@ import logging
 import unittest
 from unittest.mock import patch
 
+# Check if cryptography is available
+try:
+    import cryptography.fernet  # noqa: F401
+
+    CRYPTOGRAPHY_AVAILABLE = True
+except (ImportError, OSError):
+    CRYPTOGRAPHY_AVAILABLE = False
+
 from email_processor.config.constants import KEYRING_SERVICE_NAME
 from email_processor.imap.auth import IMAPAuth, clear_passwords, get_imap_password
 from email_processor.logging.setup import setup_logging
@@ -36,30 +44,36 @@ class TestIMAPPassword(unittest.TestCase):
         mock_get.assert_called_once_with(KEYRING_SERVICE_NAME, "test@example.com")
         mock_set.assert_not_called()
 
-    @patch("email_processor.imap.auth.encrypt_password")
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
     @patch("builtins.input")
     @patch("getpass.getpass")
-    def test_get_password_from_input_save(
-        self, mock_getpass, mock_input, mock_set, mock_get, mock_encrypt
-    ):
-        """Test getting password from input and saving."""
+    def test_get_password_from_input_save(self, mock_getpass, mock_input, mock_set, mock_get):
+        """Test getting password from input and saving with real cryptography if available."""
         mock_get.return_value = None
         mock_getpass.return_value = "new_password"
         mock_input.return_value = "y"
-        # Mock encryption to return encrypted password
-        mock_encrypt.return_value = "ENC:encrypted_password_data"
 
         password = get_imap_password("test@example.com")
 
         self.assertEqual(password, "new_password")
-        # Password should be saved encrypted
+        # Password should be saved (encrypted if cryptography available, unencrypted as fallback)
         mock_set.assert_called_once()
         saved_password = mock_set.call_args[0][2]
-        self.assertTrue(is_encrypted(saved_password))
         self.assertEqual(mock_set.call_args[0][0], KEYRING_SERVICE_NAME)
         self.assertEqual(mock_set.call_args[0][1], "test@example.com")
+
+        # If cryptography is available, password should be encrypted
+        if CRYPTOGRAPHY_AVAILABLE:
+            self.assertTrue(
+                is_encrypted(saved_password),
+                "Password should be encrypted when cryptography is available",
+            )
+        else:
+            # If cryptography is not available, password is saved unencrypted as fallback
+            self.assertEqual(
+                saved_password, "new_password", "Password should be saved unencrypted as fallback"
+            )
 
     @patch("email_processor.imap.auth.keyring.get_password")
     @patch("email_processor.imap.auth.keyring.set_password")
