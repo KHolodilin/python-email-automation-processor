@@ -136,6 +136,23 @@ class TestEncryption(unittest.TestCase):
         decrypted = decrypt_password(encrypted, config_path)
         self.assertEqual(password, decrypted)
 
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    def test_decrypt_removes_prefix(self):
+        """Test that decrypted password does not contain ENC: prefix."""
+        password = "test_password_no_prefix"
+        encrypted = encrypt_password(password)
+
+        # Verify encrypted has prefix
+        self.assertTrue(encrypted.startswith("ENC:"))
+
+        # Decrypt and verify no prefix
+        decrypted = decrypt_password(encrypted)
+        self.assertFalse(
+            decrypted.startswith("ENC:"), "Decrypted password should not contain ENC: prefix"
+        )
+        self.assertEqual(password, decrypted)
+        self.assertNotIn("ENC:", decrypted)
+
 
 if __name__ == "__main__":
     unittest.main()
