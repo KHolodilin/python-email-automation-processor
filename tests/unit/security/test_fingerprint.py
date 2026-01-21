@@ -134,8 +134,34 @@ class TestFingerprint:
     @pytest.mark.skipif(os.name == "nt", reason="Linux-only UID tests")
     @patch("email_processor.security.fingerprint.os.getuid", return_value=1000, create=True)
     def test_get_user_id_linux_with_uid(self, mock_getuid):
+        """Test get_user_id on Linux when getuid is available and returns UID."""
         user_id = get_user_id()
         assert user_id == "1000"
+        # Verify getuid was called
+        mock_getuid.assert_called_once()
+
+    @patch("email_processor.security.fingerprint.platform.system", return_value="Linux")
+    @patch("email_processor.security.fingerprint.os.getuid", return_value=1000, create=True)
+    def test_get_user_id_linux_with_uid_mocked(self, mock_getuid, mock_platform):
+        """Test get_user_id on Linux when getuid is available and returns UID (works on all platforms)."""
+        user_id = get_user_id()
+        assert user_id == "1000"
+        # Verify getuid was called
+        mock_getuid.assert_called_once()
+
+    @patch("email_processor.security.fingerprint.platform.system", return_value="Linux")
+    @patch(
+        "email_processor.security.fingerprint.os.getuid",
+        side_effect=Exception("Permission denied"),
+        create=True,
+    )
+    def test_get_user_id_linux_uid_exception_mocked(self, mock_getuid, mock_platform):
+        """Test get_user_id on Linux when getuid() raises exception, fallback to username (works on all platforms)."""
+        with patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False):
+            user_id = get_user_id()
+        assert user_id == "testuser"
+        # Verify getuid was called
+        mock_getuid.assert_called_once()
 
     @pytest.mark.skipif(os.name == "nt", reason="Linux-only UID tests")
     @patch(
@@ -144,7 +170,58 @@ class TestFingerprint:
         create=True,
     )
     def test_get_user_id_linux_uid_exception(self, mock_getuid):
+        """Test get_user_id when getuid() raises exception, fallback to username."""
         with patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False):
+            user_id = get_user_id()
+        assert user_id == "testuser"
+        # Verify getuid was called
+        mock_getuid.assert_called_once()
+
+    @patch("email_processor.security.fingerprint.platform.system", return_value="Linux")
+    def test_get_user_id_linux_getuid_none(self, mock_platform):
+        """Test get_user_id when getuid is not available (getattr returns None)."""
+        # Mock os module to not have getuid attribute
+        with (
+            patch("email_processor.security.fingerprint.os") as mock_os,
+            patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False),
+        ):
+            # Make getattr return None for getuid
+            def getattr_side_effect(obj, name, default=None):
+                if name == "getuid":
+                    return None
+                return getattr(obj, name, default)
+
+            mock_os.getenv = os.getenv
+            with patch("builtins.getattr", side_effect=getattr_side_effect):
+                user_id = get_user_id()
+            assert user_id == "testuser"
+
+    @patch(
+        "email_processor.security.fingerprint.platform.system",
+        side_effect=Exception("Platform error"),
+    )
+    def test_get_user_id_platform_exception(self, mock_platform):
+        """Test get_user_id when platform.system() raises exception."""
+        with patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False):
+            user_id = get_user_id()
+        assert user_id == "testuser"
+
+    @pytest.mark.skipif(os.name == "nt", reason="Linux-only UID tests")
+    @patch("email_processor.security.fingerprint.os")
+    def test_get_user_id_linux_getattr_exception(self, mock_os):
+        """Test get_user_id when getattr(os, 'getuid') raises exception."""
+
+        # Make getattr raise exception when accessing os.getuid
+        def getattr_side_effect(obj, name, default=None):
+            if name == "getuid":
+                raise Exception("getattr error")
+            return getattr(obj, name, default)
+
+        mock_os.getenv = os.getenv
+        with (
+            patch("builtins.getattr", side_effect=getattr_side_effect),
+            patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False),
+        ):
             user_id = get_user_id()
         assert user_id == "testuser"
 
