@@ -608,3 +608,723 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             result = self.processor.process(dry_run=False)
             self.assertEqual(result.errors, 1)
             self.assertEqual(result.processed, 0)
+
+    def test_process_email_uid_parse_error_attribute_error(self):
+        """Test _process_email when UID parsing raises AttributeError."""
+        mock_mail = MagicMock()
+        # Return meta data that will cause AttributeError when trying to access meta[0][0]
+        mock_meta_item = MagicMock()
+        # Make meta[0] not None, but accessing meta[0][0] will raise AttributeError
+        del mock_meta_item.__getitem__
+        mock_mail.fetch.side_effect = [
+            (
+                "OK",
+                [(mock_meta_item, None)],
+            ),  # meta[0] exists but accessing [0] raises AttributeError
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_uid_parse_error_index_error(self):
+        """Test _process_email when UID parsing raises IndexError."""
+        mock_mail = MagicMock()
+        # Return meta data that will cause IndexError when trying to access meta[0][0]
+        mock_meta_item = []
+        mock_mail.fetch.side_effect = [
+            (
+                "OK",
+                [(mock_meta_item, None)],
+            ),  # meta[0] exists but is empty list, accessing [0] raises IndexError
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_uid_parse_error_unicode_decode_error(self):
+        """Test _process_email when UID parsing raises UnicodeDecodeError."""
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        mock_mail = MagicMock()
+
+        # Return meta data that will cause UnicodeDecodeError when trying to decode
+        # Create a mock that when accessed returns bytes that can't be decoded
+        class BadDecode:
+            def decode(self, encoding, errors="strict"):
+                raise UnicodeDecodeError("utf-8", b"", 0, 1, "invalid")
+
+        mock_meta_item = BadDecode()
+        mock_mail.fetch.side_effect = [
+            ("OK", [(mock_meta_item, None)]),
+        ]
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_uid_parse_unexpected_error(self):
+        """Test _process_email when UID parsing raises unexpected error."""
+        mock_mail = MagicMock()
+        # Return meta data that will cause unexpected error
+        mock_meta = MagicMock()
+        mock_meta.__getitem__ = MagicMock(side_effect=RuntimeError("Unexpected error"))
+        mock_mail.fetch.side_effect = [
+            ("OK", [(mock_meta, None)]),
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_fetch_imap_error(self):
+        """Test _process_email when header fetch raises IMAP4.error."""
+        import imaplib
+
+        mock_mail = MagicMock()
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),  # UID fetch succeeds
+            imaplib.IMAP4.error("IMAP error"),  # Header fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_fetch_data_error_attribute_error(self):
+        """Test _process_email when header fetch raises AttributeError."""
+        mock_mail = MagicMock()
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),  # UID fetch succeeds
+            AttributeError("Attribute error"),  # Header fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_fetch_data_error_index_error(self):
+        """Test _process_email when header fetch raises IndexError."""
+        mock_mail = MagicMock()
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),  # UID fetch succeeds
+            IndexError("Index error"),  # Header fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_fetch_data_error_type_error(self):
+        """Test _process_email when header fetch raises TypeError."""
+        mock_mail = MagicMock()
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),  # UID fetch succeeds
+            TypeError("Type error"),  # Header fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_fetch_unexpected_error(self):
+        """Test _process_email when header fetch raises unexpected error."""
+        mock_mail = MagicMock()
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),  # UID fetch succeeds
+            RuntimeError("Unexpected error"),  # Header fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_parse_error_message_parse_error(self):
+        """Test _process_email when header parsing raises MessageParseError."""
+        import email.errors
+
+        mock_mail = MagicMock()
+        header_bytes = b"Invalid header"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=email.errors.MessageParseError("Parse error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_header_parse_error_unicode_decode_error(self):
+        """Test _process_email when header parsing raises UnicodeDecodeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"Invalid header"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "invalid"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_header_parse_data_error_attribute_error(self):
+        """Test _process_email when header parsing raises AttributeError."""
+        mock_mail = MagicMock()
+
+        # Create header_data that will cause AttributeError when accessing [0][1] or [0]
+        class BadHeaderData:
+            def __getitem__(self, key):
+                if key == 0:
+                    raise AttributeError("Attribute error")
+                raise IndexError("Index error")
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [BadHeaderData()]),  # Invalid header data that causes AttributeError
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_parse_data_error_index_error(self):
+        """Test _process_email when header parsing raises IndexError."""
+        mock_mail = MagicMock()
+
+        # Create header_data that will cause IndexError when accessing [0]
+        class BadHeaderData:
+            def __getitem__(self, key):
+                raise IndexError("Index error")
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [BadHeaderData()]),  # Invalid header data that causes IndexError
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_parse_data_error_type_error(self):
+        """Test _process_email when header parsing raises TypeError."""
+        mock_mail = MagicMock()
+
+        # Create header_data that will cause TypeError when accessing [0][1] or [0]
+        class BadHeaderData:
+            def __getitem__(self, key):
+                if key == 0:
+                    raise TypeError("Type error")
+                raise IndexError("Index error")
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [BadHeaderData()]),  # Invalid header data that causes TypeError
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_header_parse_unexpected_error(self):
+        """Test _process_email when header parsing raises unexpected error."""
+        mock_mail = MagicMock()
+        header_bytes = (
+            b"From: sender@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uids_load_io_error(self):
+        """Test _process_email when loading processed UIDs raises OSError."""
+        mock_mail = MagicMock()
+        header_bytes = (
+            b"From: sender@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.load_processed_for_day",
+            side_effect=OSError("IO error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uids_load_permission_error(self):
+        """Test _process_email when loading processed UIDs raises PermissionError."""
+        mock_mail = MagicMock()
+        header_bytes = (
+            b"From: sender@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.load_processed_for_day",
+            side_effect=PermissionError("Permission error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uids_load_unexpected_error(self):
+        """Test _process_email when loading processed UIDs raises unexpected error."""
+        mock_mail = MagicMock()
+        header_bytes = (
+            b"From: sender@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.load_processed_for_day",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uid_save_io_error_non_allowed(self):
+        """Test _process_email when saving processed UID for non-allowed sender raises OSError."""
+        mock_mail = MagicMock()
+        header_bytes = (
+            b"From: other@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.save_processed_uid_for_day",
+            side_effect=OSError("IO error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should still return "skipped" even if save fails
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uid_save_permission_error_non_allowed(self):
+        """Test _process_email when saving processed UID for non-allowed sender raises PermissionError."""
+        mock_mail = MagicMock()
+        header_bytes = (
+            b"From: other@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.save_processed_uid_for_day",
+            side_effect=PermissionError("Permission error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should still return "skipped" even if save fails
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uid_save_unexpected_error_non_allowed(self):
+        """Test _process_email when saving processed UID for non-allowed sender raises unexpected error."""
+        mock_mail = MagicMock()
+        header_bytes = (
+            b"From: other@example.com\r\nSubject: Test\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        )
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.save_processed_uid_for_day",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should still return "skipped" even if save fails
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_target_folder_create_io_error(self):
+        """Test _process_email when target folder creation raises OSError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock Path.mkdir to raise OSError
+        with patch("pathlib.Path.mkdir", side_effect=OSError("IO error")):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_target_folder_create_permission_error(self):
+        """Test _process_email when target folder creation raises PermissionError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock Path.mkdir to raise PermissionError
+        with patch("pathlib.Path.mkdir", side_effect=PermissionError("Permission error")):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_target_folder_create_unexpected_error(self):
+        """Test _process_email when target folder creation raises unexpected error."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock Path.mkdir to raise unexpected error
+        with patch("pathlib.Path.mkdir", side_effect=RuntimeError("Unexpected error")):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_fetch_imap_error(self):
+        """Test _process_email when message fetch raises IMAP4.error."""
+        import imaplib
+
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            imaplib.IMAP4.error("IMAP error"),  # Message fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_message_fetch_data_error_attribute_error(self):
+        """Test _process_email when message fetch raises AttributeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            AttributeError("Attribute error"),  # Message fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_message_fetch_data_error_index_error(self):
+        """Test _process_email when message fetch raises IndexError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            IndexError("Index error"),  # Message fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_message_fetch_data_error_type_error(self):
+        """Test _process_email when message fetch raises TypeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            TypeError("Type error"),  # Message fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_message_fetch_unexpected_error(self):
+        """Test _process_email when message fetch raises unexpected error."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            RuntimeError("Unexpected error"),  # Message fetch fails
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_message_parse_error_message_parse_error(self):
+        """Test _process_email when message parsing raises MessageParseError."""
+        import email.errors
+
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"Invalid message"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=[
+                MagicMock(),  # First call for header (succeeds)
+                email.errors.MessageParseError("Parse error"),  # Second call for message (fails)
+            ],
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_parse_error_unicode_decode_error(self):
+        """Test _process_email when message parsing raises UnicodeDecodeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"Invalid message"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=[
+                MagicMock(),  # First call for header (succeeds)
+                UnicodeDecodeError(
+                    "utf-8", b"", 0, 1, "invalid"
+                ),  # Second call for message (fails)
+            ],
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_parse_data_error_attribute_error(self):
+        """Test _process_email when message parsing raises AttributeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, None)]),  # Invalid message data
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=[
+                MagicMock(),  # First call for header (succeeds)
+                AttributeError("Attribute error"),  # Second call for message (fails)
+            ],
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_parse_data_error_index_error(self):
+        """Test _process_email when message parsing raises IndexError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", []),  # Empty message data
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=[
+                MagicMock(),  # First call for header (succeeds)
+                IndexError("Index error"),  # Second call for message (fails)
+            ],
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_parse_data_error_type_error(self):
+        """Test _process_email when message parsing raises TypeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, None)]),  # Invalid message data
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=[
+                MagicMock(),  # First call for header (succeeds)
+                TypeError("Type error"),  # Second call for message (fails)
+            ],
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_parse_unexpected_error(self):
+        """Test _process_email when message parsing raises unexpected error."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        with patch(
+            "email_processor.processor.email_processor.message_from_bytes",
+            side_effect=[
+                MagicMock(),  # First call for header (succeeds)
+                RuntimeError("Unexpected error"),  # Second call for message (fails)
+            ],
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
