@@ -310,6 +310,103 @@ class TestIMAPClient(unittest.TestCase):
             imap_connect("imap.example.com", "user", "password", 2, 1)
         mock_sleep.assert_called_once()
 
+    @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
+    def test_imap_connect_unicode_error_in_imap_error_str(self, mock_imap_class):
+        """Test IMAP connection with Unicode error when converting IMAPError to string."""
+        import imaplib
+
+        mock_imap = MagicMock()
+
+        # Create an IMAPError that raises UnicodeDecodeError when str() is called
+        class UnicodeIMAPError(imaplib.IMAP4.error):
+            def __init__(self):
+                super().__init__()
+                self.args = (b"\xff\xfe\x00\x01",)  # Invalid UTF-8 bytes
+
+            def __str__(self):
+                # First call raises UnicodeDecodeError
+                raise UnicodeDecodeError("utf-8", b"\xff\xfe", 0, 2, "error")
+
+        imap_error = UnicodeIMAPError()
+        mock_imap.login.side_effect = imap_error
+        mock_imap_class.return_value = mock_imap
+
+        with self.assertRaises(ConnectionError):
+            imap_connect("imap.example.com", "user", "password", 1, 1)
+
+    @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
+    def test_imap_connect_unicode_error_in_imap_error_decode(self, mock_imap_class):
+        """Test IMAP connection with Unicode error when decoding bytes in IMAPError."""
+        import imaplib
+
+        mock_imap = MagicMock()
+
+        # Create an IMAPError with bytes that cause decode error, and str() raises UnicodeEncodeError
+        class UnicodeIMAPError(imaplib.IMAP4.error):
+            def __init__(self):
+                super().__init__()
+                self.args = (b"\xff\xfe\x00\x01",)  # Invalid UTF-8 bytes
+
+            def __str__(self):
+                # First call raises UnicodeEncodeError
+                raise UnicodeEncodeError("utf-8", "test", 0, 1, "error")
+
+        imap_error = UnicodeIMAPError()
+        mock_imap.login.side_effect = imap_error
+        mock_imap_class.return_value = mock_imap
+
+        with self.assertRaises(ConnectionError):
+            imap_connect("imap.example.com", "user", "password", 1, 1)
+
+    @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
+    def test_imap_connect_unicode_error_in_auth_logging(self, mock_imap_class):
+        """Test IMAP connection with Unicode error in authentication error logging."""
+        import imaplib
+
+        mock_imap = MagicMock()
+
+        # Create an IMAPError that is detected as auth error and raises Unicode error in logging
+        class UnicodeAuthError(imaplib.IMAP4.error):
+            def __str__(self):
+                # First call succeeds (for error_str check)
+                if not hasattr(self, "_str_called"):
+                    self._str_called = True
+                    return "AUTHENTICATIONFAILED"
+                # Second call (in logging) raises UnicodeDecodeError
+                raise UnicodeDecodeError("utf-8", b"\xff\xfe", 0, 2, "error")
+
+        auth_error = UnicodeAuthError()
+        mock_imap.login.side_effect = auth_error
+        mock_imap_class.return_value = mock_imap
+
+        with self.assertRaises(ConnectionError):
+            imap_connect("imap.example.com", "user", "password", 1, 1)
+
+    @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
+    @patch("time.sleep")
+    def test_imap_connect_unicode_error_in_retry_logging(self, mock_sleep, mock_imap_class):
+        """Test IMAP connection with Unicode error in retry error logging."""
+        import imaplib
+
+        mock_imap = MagicMock()
+
+        # Create an IMAPError that is NOT auth error and raises Unicode error in logging
+        class UnicodeRetryError(imaplib.IMAP4.error):
+            def __str__(self):
+                # First call succeeds (for error_str check)
+                if not hasattr(self, "_str_called"):
+                    self._str_called = True
+                    return "Temporary failure"
+                # Second call (in logging) raises UnicodeDecodeError
+                raise UnicodeDecodeError("utf-8", b"\xff\xfe", 0, 2, "error")
+
+        retry_error = UnicodeRetryError()
+        mock_imap.login.side_effect = retry_error
+        mock_imap_class.return_value = mock_imap
+
+        with self.assertRaises(ConnectionError):
+            imap_connect("imap.example.com", "user", "password", 2, 1)
+
     def test_imap_client_select_folder_failure(self):
         """Test IMAPClient.select_folder raises on failure."""
         client = IMAPClient("imap.example.com", "user", "password", 3, 1)
