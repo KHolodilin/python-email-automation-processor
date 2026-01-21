@@ -1262,11 +1262,17 @@ class TestDisplayResultsRich(unittest.TestCase):
 class TestPasswordFileErrors(unittest.TestCase):
     """Tests for password file error handling."""
 
-    @patch("email_processor.__main__.ConfigLoader.load")
     @patch("email_processor.__main__.stat.filemode")
-    @patch("email_processor.__main__.sys.platform", "linux")
-    def test_set_password_file_permission_warning(self, mock_filemode, mock_load_config):
+    @patch("email_processor.__main__.ConfigLoader.load")
+    def test_set_password_file_permission_warning(self, mock_load_config, mock_filemode):
         """Test warning when password file has open permissions (Unix)."""
+        import stat
+        import sys
+
+        # Skip test on Windows as permission check is Unix-only
+        if sys.platform == "win32":
+            self.skipTest("Permission check is Unix-only")
+
         mock_load_config.return_value = {
             "imap": {
                 "user": "test@example.com",
@@ -1279,26 +1285,63 @@ class TestPasswordFileErrors(unittest.TestCase):
             password_file = f.name
 
         try:
-            with patch(
-                "sys.argv", ["email_processor", "--set-password", "--password-file", password_file]
-            ):
-                with patch("email_processor.__main__.console", None):
-                    with patch("builtins.print") as mock_print:
-                        with patch("keyring.set_password"):
-                            with patch(
-                                "email_processor.__main__.encrypt_password",
-                                return_value="encrypted",
-                            ):
-                                result = main()
-                                self.assertEqual(result, 0)
-                                # Should print warning about permissions
-                                warning_calls = [str(call) for call in mock_print.call_args_list]
-                                permission_warnings = [
-                                    call
-                                    for call in warning_calls
-                                    if "permissions" in call.lower() or "chmod" in call.lower()
-                                ]
-                                self.assertTrue(len(permission_warnings) > 0)
+            # Create a fully mocked Path object
+            mock_path = MagicMock()
+            mock_path.exists.return_value = True
+            # Mock the stat() call to return a file with open permissions
+            mock_stat_result = MagicMock()
+            # Set st_mode to have group and other read permissions
+            mock_stat_result.st_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
+            mock_path.stat.return_value = mock_stat_result
+
+            # Mock platform to be Linux so permission check runs
+            with patch("email_processor.__main__.sys.platform", "linux"):
+                with patch(
+                    "sys.argv",
+                    ["email_processor", "--set-password", "--password-file", password_file],
+                ):
+                    with patch("email_processor.__main__.console", None):
+                        with patch("builtins.print") as mock_print:
+                            with patch("keyring.set_password"):
+                                with patch(
+                                    "email_processor.__main__.encrypt_password",
+                                    return_value="encrypted",
+                                ):
+                                    # Patch Path constructor to return our mocked path
+                                    def mock_path_constructor(path_str):
+                                        if str(path_str) == password_file:
+                                            return mock_path
+                                        return Path(path_str)
+
+                                    with patch(
+                                        "email_processor.__main__.Path",
+                                        side_effect=mock_path_constructor,
+                                    ):
+                                        # Also need to patch open() to read the file
+                                        with patch("builtins.open", create=True) as mock_open:
+                                            mock_file = MagicMock()
+                                            mock_file.readline.return_value = "test_password\n"
+                                            mock_open.return_value.__enter__.return_value = (
+                                                mock_file
+                                            )
+
+                                            result = main()
+                                            self.assertEqual(result, 0)
+                                            # Should print warning about permissions (only on Unix when file has open perms)
+                                            warning_calls = [
+                                                str(call) for call in mock_print.call_args_list
+                                            ]
+                                            permission_warnings = [
+                                                call
+                                                for call in warning_calls
+                                                if "permissions" in call.lower()
+                                                or "chmod" in call.lower()
+                                            ]
+                                            # On Unix with open permissions, warning should be printed
+                                            self.assertTrue(
+                                                len(permission_warnings) > 0,
+                                                f"Expected permission warning, but got: {warning_calls}",
+                                            )
         finally:
             Path(password_file).unlink(missing_ok=True)
 
