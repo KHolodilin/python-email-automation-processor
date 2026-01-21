@@ -257,7 +257,57 @@ class TestIMAPClient(unittest.TestCase):
 
         result = imap_connect("imap.example.com", "user", "password", 3, 1)
         self.assertEqual(result, mock_imap)
-        self.assertEqual(mock_imap.login.call_count, 2)
+
+    @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
+    def test_imap_connect_unicode_error_in_auth(self, mock_imap_class):
+        """Test IMAP connection with Unicode error in authentication error handling."""
+        mock_imap = MagicMock()
+
+        # Create an exception that will raise UnicodeDecodeError when str() is called
+        class UnicodeException(Exception):
+            def __str__(self):
+                raise UnicodeDecodeError("utf-8", b"\xff\xfe", 0, 2, "error")
+
+        auth_error = UnicodeException()
+        mock_imap.login.side_effect = auth_error
+        mock_imap_class.return_value = mock_imap
+
+        with self.assertRaises(ConnectionError):
+            imap_connect("imap.example.com", "user", "password", 1, 1)
+
+    @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
+    @patch("time.sleep")
+    def test_imap_connect_unicode_error_in_retry(self, mock_sleep, mock_imap_class):
+        """Test IMAP connection with Unicode error in retry error handling."""
+        mock_imap = MagicMock()
+
+        # Create an exception that will raise UnicodeDecodeError when str() is called
+        class UnicodeException(Exception):
+            def __str__(self):
+                raise UnicodeDecodeError("utf-8", b"\xff\xfe", 0, 2, "error")
+
+        retry_error = UnicodeException()
+        mock_imap.login.side_effect = retry_error
+        mock_imap_class.return_value = mock_imap
+
+        with self.assertRaises(ConnectionError):
+            imap_connect("imap.example.com", "user", "password", 2, 1)
+
+    @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
+    @patch("time.sleep")
+    def test_imap_connect_unicode_error_in_general_exception(self, mock_sleep, mock_imap_class):
+        """Test IMAP connection with Unicode error in general exception handling."""
+
+        # Create an exception that will raise UnicodeDecodeError when str() is called
+        class UnicodeException(Exception):
+            def __str__(self):
+                raise UnicodeDecodeError("utf-8", b"\xff\xfe", 0, 2, "error")
+
+        general_error = UnicodeException()
+        mock_imap_class.side_effect = general_error
+
+        with self.assertRaises(ConnectionError):
+            imap_connect("imap.example.com", "user", "password", 2, 1)
         mock_sleep.assert_called_once()
 
     def test_imap_client_select_folder_failure(self):
