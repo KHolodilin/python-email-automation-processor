@@ -128,9 +128,17 @@ class TestFingerprint(unittest.TestCase):
         )
 
         # Create a custom class that doesn't have getuid
+        # Use __getattr__ to raise AttributeError for getuid
         class MockOSWithoutGetuid:
             def getenv(self, key, default=None):
                 return "testuser" if key in ("USERNAME", "USER") else default
+
+            def __getattr__(self, name):
+                if name == "getuid":
+                    raise AttributeError(
+                        f"'{type(self).__name__}' object has no attribute 'getuid'"
+                    )
+                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
         mock_os_spec = MockOSWithoutGetuid()
         # Patch os module to use our custom mock
