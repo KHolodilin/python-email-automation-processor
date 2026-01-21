@@ -128,21 +128,23 @@ class TestFingerprint(unittest.TestCase):
         )
 
         # Create a custom class that doesn't have getuid
-        # Use __getattribute__ to intercept all attribute access and raise AttributeError for getuid
-        # This allows getattr(os, "getuid", None) to return None on all platforms
+        # Use __dir__ to limit available attributes and __getattr__ to raise AttributeError for getuid
         class MockOSWithoutGetuid:
             def getenv(self, key, default=None):
                 return "testuser" if key in ("USERNAME", "USER") else default
 
-            def __getattribute__(self, name):
+            def __dir__(self):
+                # Return only the attributes we want to expose
+                return ["getenv"]
+
+            def __getattr__(self, name):
+                # This is called only when attribute is not found through normal lookup
+                # For getuid, we want to raise AttributeError so getattr returns None
                 if name == "getuid":
-                    # When getattr(os, "getuid", None) is called, this will be accessed
-                    # We need to raise AttributeError so getattr returns the default (None)
                     raise AttributeError(
                         f"'{type(self).__name__}' object has no attribute 'getuid'"
                     )
-                # For other attributes, use normal lookup
-                return super().__getattribute__(name)
+                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
         mock_os_spec = MockOSWithoutGetuid()
         # Patch os module to use our custom mock
@@ -150,10 +152,22 @@ class TestFingerprint(unittest.TestCase):
 
         import email_processor.security.fingerprint as fingerprint_module
 
-        # Save original os
+        # Save original os and getattr
         original_os = fingerprint_module.os
+        original_getattr = builtins.getattr
+
+        # Create a custom getattr that handles our mock object
+        def patched_getattr(obj, name, default=None):
+            # Check if this is our mock os object and we're looking for getuid
+            if obj is mock_os_spec and name == "getuid":
+                return default
+            # For all other cases, use the real getattr
+            return original_getattr(obj, name, default)
+
         # Replace with our mock
         fingerprint_module.os = mock_os_spec
+        # Patch getattr only in the fingerprint module's namespace
+        fingerprint_module.getattr = patched_getattr
 
         try:
             # Mock win32security module
@@ -178,8 +192,10 @@ class TestFingerprint(unittest.TestCase):
             # Should return SID string
             self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
         finally:
-            # Restore original os
+            # Restore original os and getattr
             fingerprint_module.os = original_os
+            if hasattr(fingerprint_module, "getattr"):
+                delattr(fingerprint_module, "getattr")
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
