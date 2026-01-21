@@ -13,6 +13,11 @@ from email_processor.security.fingerprint import (
 )
 
 
+class _SidObject:
+    def __init__(self, sid: str):
+        self.Sid = sid
+
+
 class TestFingerprint(unittest.TestCase):
     """Tests for fingerprint generation."""
 
@@ -21,14 +26,12 @@ class TestFingerprint(unittest.TestCase):
     # ----------------------------
 
     def test_get_hostname(self):
-        """Test hostname retrieval."""
         hostname = get_hostname()
         self.assertIsInstance(hostname, str)
         self.assertGreater(len(hostname), 0)
 
     @patch("email_processor.security.fingerprint.socket.gethostname")
     def test_get_hostname_exception(self, mock_gethostname):
-        """Test hostname retrieval when exception occurs."""
         mock_gethostname.side_effect = Exception("Network error")
         hostname = get_hostname()
         self.assertEqual(hostname, "unknown")
@@ -39,14 +42,12 @@ class TestFingerprint(unittest.TestCase):
 
     @patch("email_processor.security.fingerprint.uuid.getnode")
     def test_get_mac_address_success(self, mock_getnode):
-        """Test MAC address retrieval when available."""
         mock_getnode.return_value = 0x123456789ABC
         mac = get_mac_address()
         self.assertEqual(mac, "123456789abc")
 
     @patch("email_processor.security.fingerprint.uuid.getnode")
     def test_get_mac_address_failure(self, mock_getnode):
-        """Test MAC address retrieval when unavailable."""
         mock_getnode.side_effect = Exception("Error")
         mac = get_mac_address()
         self.assertIsNone(mac)
@@ -56,20 +57,15 @@ class TestFingerprint(unittest.TestCase):
     # ----------------------------
 
     def test_get_config_path_hash(self):
-        """Test config path hash generation."""
         hash1 = get_config_path_hash("/path/to/config.yaml")
         hash2 = get_config_path_hash("/path/to/config.yaml")
         hash3 = get_config_path_hash("/different/path.yaml")
 
-        # Same path should produce same hash
         self.assertEqual(hash1, hash2)
-        # Different paths should produce different hashes
         self.assertNotEqual(hash1, hash3)
-        # Hash should be 16 characters
         self.assertEqual(len(hash1), 16)
 
     def test_get_config_path_hash_none(self):
-        """Test config path hash with None."""
         hash1 = get_config_path_hash(None)
         hash2 = get_config_path_hash(None)
         self.assertEqual(hash1, hash2)
@@ -80,14 +76,12 @@ class TestFingerprint(unittest.TestCase):
     # ----------------------------
 
     def test_get_user_id(self):
-        """Test user ID retrieval (smoke test)."""
         user_id = get_user_id()
         self.assertIsInstance(user_id, str)
         self.assertGreater(len(user_id), 0)
 
     @patch("email_processor.security.fingerprint.platform.system", return_value="Windows")
     def test_get_user_id_windows_no_pywin32(self, mock_system):
-        """Windows without pywin32 -> fallback to username from environment."""
         with patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False):
             user_id = get_user_id()
         self.assertEqual(user_id, "testuser")
@@ -95,14 +89,12 @@ class TestFingerprint(unittest.TestCase):
     @patch("email_processor.security.fingerprint.platform.system", return_value="Windows")
     @patch("builtins.__import__")
     def test_get_user_id_windows_with_sid(self, mock_import, mock_system):
-        """Windows with pywin32 available and SID retrieval success -> returns SID."""
+        """Windows with pywin32 available and SID retrieval success -> returns SID string."""
         mock_win32security = MagicMock()
 
-        # Realistic return structure:
-        # GetTokenInformation(...) returns tuple/list where [0] has attribute Sid
-        sid_obj = MagicMock()
-        sid_obj.Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
-        mock_win32security.GetTokenInformation.return_value = (sid_obj,)
+        # Important: this must match code: str(user[0].Sid)
+        sid_value = "S-1-5-21-1234567890-1234567890-1234567890-1001"
+        mock_win32security.GetTokenInformation.return_value = (_SidObject(sid_value),)
 
         mock_win32security.OpenProcessToken.return_value = MagicMock()
         mock_win32security.GetCurrentProcess.return_value = MagicMock()
@@ -119,13 +111,15 @@ class TestFingerprint(unittest.TestCase):
         mock_import.side_effect = import_side_effect
 
         user_id = get_user_id()
-        self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
+        self.assertEqual(user_id, sid_value)
 
     @patch("email_processor.security.fingerprint.platform.system", return_value="Windows")
     @patch("builtins.__import__")
     def test_get_user_id_windows_sid_exception(self, mock_import, mock_system):
-        """Windows SID retrieval fails -> fallback to username from environment."""
+        """Windows SID retrieval fails -> fallback to username."""
         mock_win32security = MagicMock()
+
+        # Fail early inside SID retrieval path
         mock_win32security.OpenProcessToken.side_effect = Exception("Access denied")
         mock_win32security.GetCurrentProcess.return_value = MagicMock()
         mock_win32security.TOKEN_QUERY = 0x0008
@@ -140,7 +134,6 @@ class TestFingerprint(unittest.TestCase):
 
         mock_import.side_effect = import_side_effect
 
-        # Patch environment instead of os.getenv (most reliable)
         with patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False):
             user_id = get_user_id()
 
@@ -151,7 +144,6 @@ class TestFingerprint(unittest.TestCase):
         side_effect=Exception("Platform error"),
     )
     def test_get_user_id_general_exception(self, mock_system):
-        """Platform detection fails -> fallback to username from environment."""
         with patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False):
             user_id = get_user_id()
         self.assertEqual(user_id, "testuser")
@@ -159,10 +151,6 @@ class TestFingerprint(unittest.TestCase):
     @patch("email_processor.security.fingerprint.platform.system", return_value="Linux")
     @patch("email_processor.security.fingerprint.os.getuid", return_value=1000, create=True)
     def test_get_user_id_linux_with_uid(self, mock_getuid, mock_system):
-        """Linux/Unix with getuid -> returns UID as string.
-
-        Note: create=True is required because Windows os module may not have getuid.
-        """
         user_id = get_user_id()
         self.assertEqual(user_id, "1000")
 
@@ -173,7 +161,6 @@ class TestFingerprint(unittest.TestCase):
         create=True,
     )
     def test_get_user_id_linux_uid_exception(self, mock_getuid, mock_system):
-        """Linux/Unix getuid fails -> fallback to username from environment."""
         with patch.dict(os.environ, {"USERNAME": "testuser", "USER": "testuser"}, clear=False):
             user_id = get_user_id()
         self.assertEqual(user_id, "testuser")
@@ -189,10 +176,8 @@ class TestFingerprint(unittest.TestCase):
         "email_processor.security.fingerprint.get_config_path_hash", return_value="deadbeefdeadbeef"
     )
     def test_get_system_fingerprint(self, *_):
-        """Fingerprint is deterministic for the same components."""
         fingerprint1 = get_system_fingerprint()
         fingerprint2 = get_system_fingerprint()
-
         self.assertEqual(fingerprint1, fingerprint2)
         self.assertEqual(len(fingerprint1), 64)
 
@@ -200,7 +185,6 @@ class TestFingerprint(unittest.TestCase):
     @patch("email_processor.security.fingerprint.get_hostname", return_value="test-host")
     @patch("email_processor.security.fingerprint.get_user_id", return_value="1000")
     def test_get_system_fingerprint_with_config(self, *_):
-        """Fingerprint changes when config path changes (deterministic)."""
         fp1 = get_system_fingerprint("/path/to/config.yaml")
         fp2 = get_system_fingerprint("/path/to/config.yaml")
         fp3 = get_system_fingerprint("/different/path.yaml")
@@ -217,7 +201,6 @@ class TestFingerprint(unittest.TestCase):
         "email_processor.security.fingerprint.get_config_path_hash", return_value="deadbeefdeadbeef"
     )
     def test_get_system_fingerprint_no_mac(self, *_):
-        """Fingerprint still generated when MAC is unavailable."""
         fingerprint = get_system_fingerprint()
         self.assertIsInstance(fingerprint, str)
         self.assertEqual(len(fingerprint), 64)
