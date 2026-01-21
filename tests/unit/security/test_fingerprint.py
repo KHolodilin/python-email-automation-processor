@@ -116,6 +116,100 @@ class TestFingerprint(unittest.TestCase):
         # Should fallback to username
         self.assertIsInstance(user_id, str)
 
+    @patch("email_processor.security.fingerprint.platform.system")
+    @patch("builtins.__import__")
+    @patch("email_processor.security.fingerprint.os.getenv")
+    def test_get_user_id_windows_with_sid(self, mock_getenv, mock_import, mock_system):
+        """Test user ID retrieval on Windows with successful SID retrieval."""
+        mock_system.return_value = "Windows"
+        mock_getenv.return_value = "testuser"
+
+        # Mock win32security module
+        mock_win32security = unittest.mock.MagicMock()
+        mock_token = unittest.mock.MagicMock()
+        mock_user = unittest.mock.MagicMock()
+        mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
+        mock_win32security.GetTokenInformation.return_value = mock_user
+        mock_win32security.OpenProcessToken.return_value = mock_token
+        mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+        mock_win32security.TOKEN_QUERY = 0x0008
+
+        def import_side_effect(name, *args, **kwargs):
+            if name == "win32security":
+                return mock_win32security
+            # For other imports, use real import
+            import builtins
+
+            return builtins.__import__(name, *args, **kwargs)
+
+        mock_import.side_effect = import_side_effect
+
+        user_id = get_user_id()
+        # Should return SID string
+        self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
+
+    @patch("email_processor.security.fingerprint.platform.system")
+    @patch("builtins.__import__")
+    @patch("email_processor.security.fingerprint.os.getenv")
+    def test_get_user_id_windows_sid_exception(self, mock_getenv, mock_import, mock_system):
+        """Test user ID retrieval on Windows when SID retrieval raises exception."""
+        mock_system.return_value = "Windows"
+        mock_getenv.return_value = "testuser"
+
+        # Mock win32security module to raise exception
+        mock_win32security = unittest.mock.MagicMock()
+        mock_win32security.OpenProcessToken.side_effect = Exception("Access denied")
+        mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+        mock_win32security.TOKEN_QUERY = 0x0008
+
+        def import_side_effect(name, *args, **kwargs):
+            if name == "win32security":
+                return mock_win32security
+            # For other imports, use real import
+            import builtins
+
+            return builtins.__import__(name, *args, **kwargs)
+
+        mock_import.side_effect = import_side_effect
+
+        user_id = get_user_id()
+        # Should fallback to username
+        self.assertEqual(user_id, "testuser")
+
+    @patch("email_processor.security.fingerprint.platform.system")
+    @patch("email_processor.security.fingerprint.os")
+    @patch("email_processor.security.fingerprint.os.getenv")
+    def test_get_user_id_linux_with_uid(self, mock_getenv, mock_os, mock_system):
+        """Test user ID retrieval on Linux with successful UID retrieval."""
+        mock_system.return_value = "Linux"
+        mock_getenv.return_value = "testuser"
+        # Add getuid to mock os module
+        mock_os.getuid = lambda: 1000
+
+        user_id = get_user_id()
+        # Should return UID as string
+        self.assertEqual(user_id, "1000")
+
+    @patch("email_processor.security.fingerprint.platform.system")
+    @patch("email_processor.security.fingerprint.os")
+    def test_get_user_id_linux_uid_exception(self, mock_os, mock_system):
+        """Test user ID retrieval on Linux when UID retrieval raises exception."""
+        mock_system.return_value = "Linux"
+        # Configure os.getenv to return testuser
+        mock_os.getenv = (
+            lambda key, default=None: "testuser" if key in ("USERNAME", "USER") else default
+        )
+
+        # Add getuid to mock os module that raises exception
+        def raise_exception():
+            raise Exception("Permission denied")
+
+        mock_os.getuid = raise_exception
+
+        user_id = get_user_id()
+        # Should fallback to username
+        self.assertEqual(user_id, "testuser")
+
 
 if __name__ == "__main__":
     unittest.main()
