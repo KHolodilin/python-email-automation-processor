@@ -153,6 +153,24 @@ class TestEncryption(unittest.TestCase):
         self.assertEqual(password, decrypted)
         self.assertNotIn("ENC:", decrypted)
 
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    @patch("email_processor.security.encryption.generate_encryption_key")
+    @patch("email_processor.security.encryption._get_fernet")
+    def test_encrypt_password_exception(self, mock_get_fernet, mock_key_gen):
+        """Test encrypt_password handles exceptions."""
+        from unittest.mock import MagicMock
+
+        # Create a mock Fernet class that raises exception when encrypt is called
+        mock_fernet_instance = MagicMock()
+        mock_fernet_instance.encrypt.side_effect = Exception("Encryption error")
+        mock_fernet_class = MagicMock(return_value=mock_fernet_instance)
+        mock_get_fernet.return_value = mock_fernet_class
+        mock_key_gen.return_value = b"test_key"
+
+        with self.assertRaises(Exception) as context:
+            encrypt_password("test_password")
+        self.assertIn("Encryption error", str(context.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
