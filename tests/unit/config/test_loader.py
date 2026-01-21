@@ -230,6 +230,20 @@ class TestConfigValidation(unittest.TestCase):
             validate_config(config)
         self.assertIn("'topic_mapping' must be a dictionary", str(context.exception))
 
+    def test_topic_mapping_empty_dict(self):
+        """Test validation fails when topic_mapping is empty."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {},
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'topic_mapping' must contain at least one rule", str(context.exception))
+
     def test_topic_mapping_empty_folder_name(self):
         """Test validation fails when folder name is empty."""
         config = {
