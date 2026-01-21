@@ -258,9 +258,7 @@ class TestUIDStorage(unittest.TestCase):
 
         # Mock validate_path to return False for this file
         def validate_side_effect(base, target):
-            if str(target) == str(test_file):
-                return False
-            return True
+            return str(target) != str(test_file)
 
         mock_validate.side_effect = validate_side_effect
 

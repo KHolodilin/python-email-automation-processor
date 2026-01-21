@@ -261,6 +261,9 @@ class TestAttachmentHandler(unittest.TestCase):
         # check_disk_space should be called with required_bytes (file_size + 10MB buffer)
         mock_check_disk.assert_called_once()
         call_args = mock_check_disk.call_args
-        self.assertEqual(call_args[0][0], target_folder)
+        # Normalize paths for comparison (macOS uses /private/var symlink)
+        actual_path = Path(call_args[0][0]).resolve()
+        expected_path = target_folder.resolve()
+        self.assertEqual(actual_path, expected_path)
         # required_bytes should be file_size (12) + 10MB buffer
         self.assertEqual(call_args[0][1], 12 + 10 * 1024 * 1024)
