@@ -237,3 +237,30 @@ class TestAttachmentHandler(unittest.TestCase):
 
         result2 = handler.save_attachment(part2, target_folder, "123", dry_run=False)
         self.assertFalse(result2[0])
+
+    @patch("email_processor.processor.attachments.check_disk_space")
+    def test_save_attachment_insufficient_disk_space(self, mock_check_disk):
+        """Test attachment saving when disk space is insufficient."""
+        handler = AttachmentHandler()
+        target_folder = self.download_dir / "test_folder"
+        target_folder.mkdir()
+
+        part = email.message.Message()
+        part.set_payload(b"test content")
+        part.add_header("Content-Disposition", "attachment", filename="test.pdf")
+
+        # Mock check_disk_space to return False (insufficient space)
+        mock_check_disk.return_value = False
+
+        result = handler.save_attachment(part, target_folder, "123", dry_run=False)
+        self.assertFalse(result[0])
+        self.assertEqual(result[1], 0)
+
+        # File should not be created
+        self.assertEqual(len(list(target_folder.glob("test*.pdf"))), 0)
+        # check_disk_space should be called with required_bytes (file_size + 10MB buffer)
+        mock_check_disk.assert_called_once()
+        call_args = mock_check_disk.call_args
+        self.assertEqual(call_args[0][0], target_folder)
+        # required_bytes should be file_size (12) + 10MB buffer
+        self.assertEqual(call_args[0][1], 12 + 10 * 1024 * 1024)
