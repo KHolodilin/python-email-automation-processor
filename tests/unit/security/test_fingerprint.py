@@ -142,12 +142,24 @@ class TestFingerprint(unittest.TestCase):
 
         mock_os_spec = MockOSWithoutGetuid()
         # Patch os module to use our custom mock
+        import builtins
+
         import email_processor.security.fingerprint as fingerprint_module
 
-        # Save original os
+        # Save original os and getattr
         original_os = fingerprint_module.os
+        original_getattr = builtins.getattr
+
+        # Create a custom getattr that returns None for os.getuid
+        def patched_getattr(obj, name, default=None):
+            if obj is mock_os_spec and name == "getuid":
+                return default
+            return original_getattr(obj, name, default)
+
         # Replace with our mock
         fingerprint_module.os = mock_os_spec
+        # Patch builtins.getattr in the fingerprint module namespace
+        fingerprint_module.getattr = patched_getattr
 
         try:
             # Mock win32security module
@@ -164,8 +176,6 @@ class TestFingerprint(unittest.TestCase):
                 if name == "win32security":
                     return mock_win32security
                 # For other imports, use real import
-                import builtins
-
                 return builtins.__import__(name, *args, **kwargs)
 
             mock_import.side_effect = import_side_effect
@@ -174,8 +184,10 @@ class TestFingerprint(unittest.TestCase):
             # Should return SID string
             self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
         finally:
-            # Restore original os
+            # Restore original os and getattr
             fingerprint_module.os = original_os
+            if hasattr(fingerprint_module, "getattr"):
+                delattr(fingerprint_module, "getattr")
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
