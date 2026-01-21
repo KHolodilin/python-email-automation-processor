@@ -128,23 +128,21 @@ class TestFingerprint(unittest.TestCase):
         )
 
         # Create a custom class that doesn't have getuid
-        # Use __dir__ to limit available attributes and __getattr__ to raise AttributeError for getuid
+        # Use __getattribute__ to intercept all attribute access
         class MockOSWithoutGetuid:
             def getenv(self, key, default=None):
                 return "testuser" if key in ("USERNAME", "USER") else default
 
-            def __dir__(self):
-                # Return only the attributes we want to expose
-                return ["getenv"]
-
-            def __getattr__(self, name):
-                # This is called only when attribute is not found through normal lookup
-                # For getuid, we want to raise AttributeError so getattr returns None
+            def __getattribute__(self, name):
+                # Use object.__getattribute__ to avoid recursion
                 if name == "getuid":
+                    # When getattr(os, "getuid", None) is called, this will be accessed
+                    # We need to raise AttributeError so getattr returns the default (None)
                     raise AttributeError(
                         f"'{type(self).__name__}' object has no attribute 'getuid'"
                     )
-                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+                # For other attributes, use normal lookup
+                return object.__getattribute__(self, name)
 
         mock_os_spec = MockOSWithoutGetuid()
         # Patch os module to use our custom mock
@@ -152,11 +150,16 @@ class TestFingerprint(unittest.TestCase):
 
         import email_processor.security.fingerprint as fingerprint_module
 
-        # Save original os and getattr
+        # Save original os
         original_os = fingerprint_module.os
+        # Replace with our mock
+        fingerprint_module.os = mock_os_spec
+
+        # Patch getattr in the fingerprint module using unittest.mock.patch
+        # We need to intercept getattr calls specifically for our mock object
         original_getattr = builtins.getattr
 
-        # Create a custom getattr that handles our mock object
+        # Create a wrapper that checks if we're calling getattr on our mock
         def patched_getattr(obj, name, default=None):
             # Check if this is our mock os object and we're looking for getuid
             if obj is mock_os_spec and name == "getuid":
@@ -164,10 +167,16 @@ class TestFingerprint(unittest.TestCase):
             # For all other cases, use the real getattr
             return original_getattr(obj, name, default)
 
-        # Replace with our mock
-        fingerprint_module.os = mock_os_spec
-        # Patch getattr only in the fingerprint module's namespace
-        fingerprint_module.getattr = patched_getattr
+        # Use patch to replace getattr in the fingerprint module's builtins
+        # This is the key: we need to patch getattr in the module's __builtins__
+        module_builtins = fingerprint_module.__dict__.get("__builtins__", {})
+        if isinstance(module_builtins, dict):
+            original_module_getattr = module_builtins.get("getattr", builtins.getattr)
+            module_builtins["getattr"] = patched_getattr
+        else:
+            # If __builtins__ is a module, we need to patch it differently
+            # Try to patch it in the module's globals
+            fingerprint_module.getattr = patched_getattr
 
         try:
             # Mock win32security module
@@ -194,7 +203,9 @@ class TestFingerprint(unittest.TestCase):
         finally:
             # Restore original os and getattr
             fingerprint_module.os = original_os
-            if hasattr(fingerprint_module, "getattr"):
+            if isinstance(module_builtins, dict):
+                module_builtins["getattr"] = original_module_getattr
+            elif hasattr(fingerprint_module, "getattr"):
                 delattr(fingerprint_module, "getattr")
 
     @patch("email_processor.security.fingerprint.platform.system")
