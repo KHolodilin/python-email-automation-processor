@@ -1378,10 +1378,13 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         ]
 
         # Mock attachment handler to return False (blocked by extension)
-        with patch.object(
-            self.processor.attachment_handler, "is_allowed_extension", return_value=False
-        ), patch.object(
-            self.processor.attachment_handler, "save_attachment", return_value=(False, 0)
+        with (
+            patch.object(
+                self.processor.attachment_handler, "is_allowed_extension", return_value=False
+            ),
+            patch.object(
+                self.processor.attachment_handler, "save_attachment", return_value=(False, 0)
+            ),
         ):
             from email_processor.processor.email_processor import ProcessingMetrics
 
@@ -1805,11 +1808,14 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         ]
 
         # Mock save_processed_uid_for_day to raise OSError after processing
-        with patch.object(
-            self.processor.attachment_handler, "save_attachment", return_value=(True, 100)
-        ), patch(
-            "email_processor.processor.email_processor.save_processed_uid_for_day",
-            side_effect=OSError("Permission denied"),
+        with (
+            patch.object(
+                self.processor.attachment_handler, "save_attachment", return_value=(True, 100)
+            ),
+            patch(
+                "email_processor.processor.email_processor.save_processed_uid_for_day",
+                side_effect=OSError("Permission denied"),
+            ),
         ):
             from email_processor.processor.email_processor import ProcessingMetrics
 
@@ -1844,11 +1850,14 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         ]
 
         # Mock save_processed_uid_for_day to raise unexpected error
-        with patch.object(
-            self.processor.attachment_handler, "save_attachment", return_value=(True, 100)
-        ), patch(
-            "email_processor.processor.email_processor.save_processed_uid_for_day",
-            side_effect=ValueError("Unexpected error"),
+        with (
+            patch.object(
+                self.processor.attachment_handler, "save_attachment", return_value=(True, 100)
+            ),
+            patch(
+                "email_processor.processor.email_processor.save_processed_uid_for_day",
+                side_effect=ValueError("Unexpected error"),
+            ),
         ):
             from email_processor.processor.email_processor import ProcessingMetrics
 
