@@ -118,7 +118,7 @@ class TestFingerprint(unittest.TestCase):
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
-    @patch("email_processor.security.fingerprint.os")
+    @patch("email_processor.security.fingerprint.os", spec_set=["getenv"])
     def test_get_user_id_windows_with_sid(self, mock_os, mock_import, mock_system):
         """Test user ID retrieval on Windows with successful SID retrieval."""
         mock_system.return_value = "Windows"
@@ -126,43 +126,33 @@ class TestFingerprint(unittest.TestCase):
         mock_os.getenv = (
             lambda key, default=None: "testuser" if key in ("USERNAME", "USER") else default
         )
-        # Remove getuid from os module (Windows doesn't have it)
-        # Use spec to prevent getuid from being accessed
-        import builtins
+        # Mock win32security module
+        mock_win32security = unittest.mock.MagicMock()
+        mock_token = unittest.mock.MagicMock()
+        mock_user = unittest.mock.MagicMock()
+        mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
+        mock_win32security.GetTokenInformation.return_value = mock_user
+        mock_win32security.OpenProcessToken.return_value = mock_token
+        mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+        mock_win32security.TOKEN_QUERY = 0x0008
 
-        # Create a custom os mock that doesn't have getuid
-        class MockOS:
-            def getenv(self, key, default=None):
-                return "testuser" if key in ("USERNAME", "USER") else default
+        def import_side_effect(name, *args, **kwargs):
+            if name == "win32security":
+                return mock_win32security
+            # For other imports, use real import
+            import builtins
 
-        mock_os_obj = MockOS()
-        # Patch os module to use our custom mock
-        with patch("email_processor.security.fingerprint.os", mock_os_obj):
-            # Mock win32security module
-            mock_win32security = unittest.mock.MagicMock()
-            mock_token = unittest.mock.MagicMock()
-            mock_user = unittest.mock.MagicMock()
-            mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
-            mock_win32security.GetTokenInformation.return_value = mock_user
-            mock_win32security.OpenProcessToken.return_value = mock_token
-            mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
-            mock_win32security.TOKEN_QUERY = 0x0008
+            return builtins.__import__(name, *args, **kwargs)
 
-            def import_side_effect(name, *args, **kwargs):
-                if name == "win32security":
-                    return mock_win32security
-                # For other imports, use real import
-                return builtins.__import__(name, *args, **kwargs)
+        mock_import.side_effect = import_side_effect
 
-            mock_import.side_effect = import_side_effect
-
-            user_id = get_user_id()
-            # Should return SID string
-            self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
+        user_id = get_user_id()
+        # Should return SID string
+        self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
-    @patch("email_processor.security.fingerprint.os")
+    @patch("email_processor.security.fingerprint.os", spec_set=["getenv"])
     def test_get_user_id_windows_sid_exception(self, mock_os, mock_import, mock_system):
         """Test user ID retrieval on Windows when SID retrieval raises exception."""
         mock_system.return_value = "Windows"
@@ -170,34 +160,25 @@ class TestFingerprint(unittest.TestCase):
         mock_os.getenv = (
             lambda key, default=None: "testuser" if key in ("USERNAME", "USER") else default
         )
-        # Remove getuid from os module (Windows doesn't have it)
-        import builtins
+        # Mock win32security module to raise exception
+        mock_win32security = unittest.mock.MagicMock()
+        mock_win32security.OpenProcessToken.side_effect = Exception("Access denied")
+        mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+        mock_win32security.TOKEN_QUERY = 0x0008
 
-        # Create a custom os mock that doesn't have getuid
-        class MockOS:
-            def getenv(self, key, default=None):
-                return "testuser" if key in ("USERNAME", "USER") else default
+        def import_side_effect(name, *args, **kwargs):
+            if name == "win32security":
+                return mock_win32security
+            # For other imports, use real import
+            import builtins
 
-        mock_os_obj = MockOS()
-        # Patch os module to use our custom mock
-        with patch("email_processor.security.fingerprint.os", mock_os_obj):
-            # Mock win32security module to raise exception
-            mock_win32security = unittest.mock.MagicMock()
-            mock_win32security.OpenProcessToken.side_effect = Exception("Access denied")
-            mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
-            mock_win32security.TOKEN_QUERY = 0x0008
+            return builtins.__import__(name, *args, **kwargs)
 
-            def import_side_effect(name, *args, **kwargs):
-                if name == "win32security":
-                    return mock_win32security
-                # For other imports, use real import
-                return builtins.__import__(name, *args, **kwargs)
+        mock_import.side_effect = import_side_effect
 
-            mock_import.side_effect = import_side_effect
-
-            user_id = get_user_id()
-            # Should fallback to username
-            self.assertEqual(user_id, "testuser")
+        user_id = get_user_id()
+        # Should fallback to username
+        self.assertEqual(user_id, "testuser")
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("email_processor.security.fingerprint.os")
