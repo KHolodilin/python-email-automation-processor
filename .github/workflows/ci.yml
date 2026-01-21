@@ -32,13 +32,17 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --tb=short -v --cov=email_processor --cov-report=term-missing
+          pytest --tb=short -v --cov=email_processor --cov-report=term-missing --cov-report=xml --cov-fail-under=70
 
-      - name: Upload coverage
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unittests
+          name: codecov-umbrella
+          verbose: true
 
   lint:
     name: Lint and Format Check
