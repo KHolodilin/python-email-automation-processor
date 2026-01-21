@@ -83,6 +83,31 @@ class TestFingerprint(unittest.TestCase):
         # Different config paths should produce different fingerprints
         self.assertNotEqual(fingerprint1, fingerprint3)
 
+    @patch("email_processor.security.fingerprint.socket.gethostname")
+    def test_get_hostname_exception(self, mock_gethostname):
+        """Test hostname retrieval when exception occurs."""
+        mock_gethostname.side_effect = Exception("Network error")
+        hostname = get_hostname()
+        self.assertEqual(hostname, "unknown")
+
+    @patch("email_processor.security.fingerprint.platform.system")
+    @patch("email_processor.security.fingerprint.os.getenv")
+    def test_get_user_id_windows_no_pywin32(self, mock_getenv, mock_system):
+        """Test user ID retrieval on Windows without pywin32."""
+        mock_system.return_value = "Windows"
+        mock_getenv.return_value = "testuser"
+        user_id = get_user_id()
+        # Should return username (on Windows, pywin32 may not be available)
+        self.assertIsInstance(user_id, str)
+
+    @patch("email_processor.security.fingerprint.platform.system")
+    def test_get_user_id_general_exception(self, mock_system):
+        """Test user ID retrieval when general exception occurs."""
+        mock_system.side_effect = Exception("Platform error")
+        user_id = get_user_id()
+        # Should fallback to username
+        self.assertIsInstance(user_id, str)
+
 
 if __name__ == "__main__":
     unittest.main()
