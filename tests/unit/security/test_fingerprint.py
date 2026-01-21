@@ -158,36 +158,33 @@ class TestFingerprint(unittest.TestCase):
 
         # Replace with our mock
         fingerprint_module.os = mock_os_spec
-        # Patch builtins.getattr in the fingerprint module namespace
-        fingerprint_module.getattr = patched_getattr
+        # Patch builtins.getattr globally for this test
+        with patch("builtins.getattr", patched_getattr):
+            try:
+                # Mock win32security module
+                mock_win32security = unittest.mock.MagicMock()
+                mock_token = unittest.mock.MagicMock()
+                mock_user = unittest.mock.MagicMock()
+                mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
+                mock_win32security.GetTokenInformation.return_value = mock_user
+                mock_win32security.OpenProcessToken.return_value = mock_token
+                mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+                mock_win32security.TOKEN_QUERY = 0x0008
 
-        try:
-            # Mock win32security module
-            mock_win32security = unittest.mock.MagicMock()
-            mock_token = unittest.mock.MagicMock()
-            mock_user = unittest.mock.MagicMock()
-            mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
-            mock_win32security.GetTokenInformation.return_value = mock_user
-            mock_win32security.OpenProcessToken.return_value = mock_token
-            mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
-            mock_win32security.TOKEN_QUERY = 0x0008
+                def import_side_effect(name, *args, **kwargs):
+                    if name == "win32security":
+                        return mock_win32security
+                    # For other imports, use real import
+                    return builtins.__import__(name, *args, **kwargs)
 
-            def import_side_effect(name, *args, **kwargs):
-                if name == "win32security":
-                    return mock_win32security
-                # For other imports, use real import
-                return builtins.__import__(name, *args, **kwargs)
+                mock_import.side_effect = import_side_effect
 
-            mock_import.side_effect = import_side_effect
-
-            user_id = get_user_id()
-            # Should return SID string
-            self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
-        finally:
-            # Restore original os and getattr
-            fingerprint_module.os = original_os
-            if hasattr(fingerprint_module, "getattr"):
-                delattr(fingerprint_module, "getattr")
+                user_id = get_user_id()
+                # Should return SID string
+                self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
+            finally:
+                # Restore original os
+                fingerprint_module.os = original_os
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
