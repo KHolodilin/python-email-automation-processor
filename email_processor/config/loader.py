@@ -134,8 +134,8 @@ def validate_config(cfg: dict) -> None:
                 recipient = smtp["default_recipient"]
                 if not isinstance(recipient, str) or not recipient:
                     errors.append("'smtp.default_recipient' must be a non-empty string")
-                # Basic email validation
-                if "@" not in recipient or "." not in recipient.split("@")[-1]:
+                elif "@" not in recipient or "." not in recipient.split("@")[-1]:
+                    # Basic email validation
                     errors.append("'smtp.default_recipient' must be a valid email address")
 
     if errors:

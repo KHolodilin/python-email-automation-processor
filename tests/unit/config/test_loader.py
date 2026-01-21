@@ -230,6 +230,20 @@ class TestConfigValidation(unittest.TestCase):
             validate_config(config)
         self.assertIn("'topic_mapping' must be a dictionary", str(context.exception))
 
+    def test_topic_mapping_empty_dict(self):
+        """Test validation fails when topic_mapping is empty."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {},
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'topic_mapping' must contain at least one rule", str(context.exception))
+
     def test_topic_mapping_empty_folder_name(self):
         """Test validation fails when folder name is empty."""
         config = {
@@ -324,6 +338,390 @@ class TestConfigValidation(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             validate_config(config)
         self.assertIn("Invalid regex pattern", str(context.exception))
+
+    def test_valid_smtp_config(self):
+        """Test validation of valid SMTP configuration."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "port": 587,
+                "use_tls": True,
+                "from_address": "sender@example.com",
+                "default_recipient": "recipient@example.com",
+                "max_email_size": 25.0,
+            },
+        }
+        # Should not raise
+        validate_config(config)
+
+    def test_smtp_not_dict(self):
+        """Test validation fails when smtp is not a dictionary."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": "not a dict",
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp' must be a dictionary", str(context.exception))
+
+    def test_smtp_missing_server(self):
+        """Test validation fails when smtp.server is missing."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "port": 587,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.server' is required", str(context.exception))
+
+    def test_smtp_empty_server(self):
+        """Test validation fails when smtp.server is empty."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "",
+                "port": 587,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.server' is required", str(context.exception))
+
+    def test_smtp_invalid_port_type(self):
+        """Test validation fails when smtp.port is not an integer."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "port": "not a number",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.port' must be an integer", str(context.exception))
+
+    def test_smtp_port_too_low(self):
+        """Test validation fails when smtp.port is less than 1."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "port": 0,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.port' must be between 1 and 65535", str(context.exception))
+
+    def test_smtp_port_too_high(self):
+        """Test validation fails when smtp.port is greater than 65535."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "port": 65536,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.port' must be between 1 and 65535", str(context.exception))
+
+    def test_smtp_invalid_use_tls_type(self):
+        """Test validation fails when smtp.use_tls is not a boolean."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "use_tls": "not a boolean",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.use_tls' must be a boolean", str(context.exception))
+
+    def test_smtp_invalid_use_ssl_type(self):
+        """Test validation fails when smtp.use_ssl is not a boolean."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "use_ssl": "not a boolean",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.use_ssl' must be a boolean", str(context.exception))
+
+    def test_smtp_invalid_max_email_size_type(self):
+        """Test validation fails when smtp.max_email_size is not a number."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "max_email_size": "not a number",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.max_email_size' must be a number", str(context.exception))
+
+    def test_smtp_max_email_size_zero(self):
+        """Test validation fails when smtp.max_email_size is zero."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "max_email_size": 0,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.max_email_size' must be > 0", str(context.exception))
+
+    def test_smtp_max_email_size_negative(self):
+        """Test validation fails when smtp.max_email_size is negative."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "max_email_size": -1,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.max_email_size' must be > 0", str(context.exception))
+
+    def test_smtp_missing_from_address(self):
+        """Test validation fails when smtp.from_address is missing."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.from_address' is required", str(context.exception))
+
+    def test_smtp_empty_from_address(self):
+        """Test validation fails when smtp.from_address is empty."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "from_address": "",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        # Empty string is treated as missing, so it checks for required field first
+        self.assertIn("'smtp.from_address'", str(context.exception))
+
+    def test_smtp_invalid_from_address_type(self):
+        """Test validation fails when smtp.from_address is not a string."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "from_address": 123,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.from_address' must be a non-empty string", str(context.exception))
+
+    def test_smtp_invalid_from_address_format(self):
+        """Test validation fails when smtp.from_address has invalid email format."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "from_address": "invalid-email",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.from_address' must be a valid email address", str(context.exception))
+
+    def test_smtp_invalid_default_recipient_type(self):
+        """Test validation fails when smtp.default_recipient is not a string."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "from_address": "sender@example.com",
+                "default_recipient": 123,
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.default_recipient' must be a non-empty string", str(context.exception))
+
+    def test_smtp_empty_default_recipient(self):
+        """Test validation fails when smtp.default_recipient is empty."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "from_address": "sender@example.com",
+                "default_recipient": "",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn("'smtp.default_recipient' must be a non-empty string", str(context.exception))
+
+    def test_smtp_invalid_default_recipient_format(self):
+        """Test validation fails when smtp.default_recipient has invalid email format."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "topic_mapping": {
+                ".*": "default",
+            },
+            "smtp": {
+                "server": "smtp.example.com",
+                "from_address": "sender@example.com",
+                "default_recipient": "invalid-email",
+            },
+        }
+        with self.assertRaises(ValueError) as context:
+            validate_config(config)
+        self.assertIn(
+            "'smtp.default_recipient' must be a valid email address", str(context.exception)
+        )
 
 
 class TestLoadConfig(unittest.TestCase):

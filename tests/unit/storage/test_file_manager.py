@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from email_processor.logging.setup import setup_logging
 from email_processor.storage.file_manager import (
@@ -127,3 +128,13 @@ class TestFileManager(unittest.TestCase):
             FileManager.ensure_directory(new_dir)
             self.assertTrue(new_dir.exists())
             self.assertTrue(new_dir.is_dir())
+
+    @patch("email_processor.storage.file_manager.validate_path")
+    def test_safe_save_path_path_traversal_detected(self, mock_validate):
+        """Test safe_save_path raises error when path traversal is detected."""
+        mock_validate.return_value = False
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(ValueError) as context:
+                safe_save_path(tmpdir, "test.pdf")
+            self.assertIn("Invalid path detected", str(context.exception))
+            self.assertIn("path traversal", str(context.exception))

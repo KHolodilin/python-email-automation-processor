@@ -204,6 +204,52 @@ class TestIMAPPassword(unittest.TestCase):
         password_retrieved = get_imap_password("test@example.com", config_path=config_path)
         self.assertEqual(password, password_retrieved)
 
+    @unittest.skipIf(not CRYPTOGRAPHY_AVAILABLE, "cryptography not installed")
+    @patch("email_processor.imap.auth.keyring.get_password")
+    def test_get_password_decryption_general_exception(self, mock_get):
+        """Test handling general exception (not ValueError) during password decryption."""
+        from email_processor.security.encryption import encrypt_password
+
+        # Create encrypted password
+        encrypted_password = encrypt_password("test_password", "/path/to/config.yaml")
+        mock_get.return_value = encrypted_password
+
+        # Mock decrypt_password to raise general exception (not ValueError)
+        with patch("email_processor.imap.auth.decrypt_password") as mock_decrypt:
+            # Raise a non-ValueError exception to trigger the general exception handler
+            mock_decrypt.side_effect = RuntimeError("Unexpected decryption error")
+
+            with self.assertRaises(ValueError) as context:
+                get_imap_password("test@example.com", config_path="/path/to/config.yaml")
+
+            self.assertIn("Failed to decrypt", str(context.exception))
+            self.assertIn("--clear-passwords", str(context.exception))
+
+    @patch("email_processor.imap.auth.keyring.get_password")
+    @patch("email_processor.imap.auth.keyring.set_password")
+    @patch("email_processor.imap.auth.encrypt_password")
+    @patch("builtins.input")
+    @patch("getpass.getpass")
+    def test_get_password_save_encryption_fails_fallback_succeeds(
+        self, mock_getpass, mock_input, mock_encrypt, mock_set, mock_get
+    ):
+        """Test saving password when encryption fails but unencrypted fallback succeeds."""
+        mock_get.return_value = None
+        mock_getpass.return_value = "new_password"
+        mock_input.return_value = "y"
+        # Encryption fails
+        mock_encrypt.side_effect = Exception("Encryption error")
+        # But unencrypted save succeeds
+        mock_set.return_value = None
+
+        password = get_imap_password("test@example.com")
+
+        self.assertEqual(password, "new_password")
+        # Should be called once with unencrypted password (fallback)
+        self.assertEqual(mock_set.call_count, 1)
+        call_password = mock_set.call_args[0][2]
+        self.assertEqual(call_password, "new_password")
+
 
 class TestClearPasswords(unittest.TestCase):
     """Tests for clear_passwords function."""

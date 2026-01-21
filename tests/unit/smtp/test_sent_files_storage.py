@@ -176,6 +176,163 @@ class TestSentFilesStorage(unittest.TestCase):
         # File should still exist
         self.assertTrue(path.exists())
 
+    def test_get_file_hash_os_error(self):
+        """Test file hash calculation with OSError."""
+        test_file = Path(self.temp_dir) / "nonexistent.txt"
+        with self.assertRaises(OSError):
+            get_file_hash(test_file)
+
+    def test_load_sent_hashes_io_error(self):
+        """Test loading sent hashes with IO error."""
+        day_str = "2024-01-15"
+        cache = {}
+        path = get_sent_files_path(self.temp_dir, day_str)
+        path.write_text("hash1\nhash2\n", encoding="utf-8")
+
+        # Make file unreadable by removing read permission (Unix) or deleting (Windows)
+        # For cross-platform, we'll mock the open to raise OSError
+        from unittest.mock import patch
+
+        with patch(
+            "email_processor.storage.sent_files_storage.Path.open",
+            side_effect=OSError("Permission denied"),
+        ):
+            hashes = load_sent_hashes_for_day(self.temp_dir, day_str, cache)
+            # Should return empty set on error
+            self.assertEqual(hashes, set())
+            self.assertEqual(cache[day_str], set())
+
+    def test_load_sent_hashes_general_exception(self):
+        """Test loading sent hashes with general exception."""
+        day_str = "2024-01-15"
+        cache = {}
+        path = get_sent_files_path(self.temp_dir, day_str)
+        path.write_text("hash1\nhash2\n", encoding="utf-8")
+
+        from unittest.mock import patch
+
+        with patch(
+            "email_processor.storage.sent_files_storage.Path.open",
+            side_effect=Exception("Unexpected error"),
+        ):
+            hashes = load_sent_hashes_for_day(self.temp_dir, day_str, cache)
+            # Should return empty set on error
+            self.assertEqual(hashes, set())
+            self.assertEqual(cache[day_str], set())
+
+    def test_save_sent_hash_io_error(self):
+        """Test saving sent hash with IO error."""
+        day_str = "2024-01-15"
+        cache = {}
+        test_hash = "a" * 64
+
+        from unittest.mock import patch
+
+        with patch(
+            "email_processor.storage.sent_files_storage.Path.open",
+            side_effect=OSError("Permission denied"),
+        ):
+            with self.assertRaises(OSError):
+                save_sent_hash_for_day(self.temp_dir, day_str, test_hash, cache)
+
+    def test_save_sent_hash_general_exception(self):
+        """Test saving sent hash with general exception."""
+        day_str = "2024-01-15"
+        cache = {}
+        test_hash = "a" * 64
+
+        from unittest.mock import patch
+
+        with patch(
+            "email_processor.storage.sent_files_storage.Path.open",
+            side_effect=Exception("Unexpected error"),
+        ):
+            with self.assertRaises(Exception):
+                save_sent_hash_for_day(self.temp_dir, day_str, test_hash, cache)
+
+    def test_cleanup_old_sent_files_skips_non_files(self):
+        """Test cleanup skips directories."""
+        # Create a directory with .txt in name
+        subdir = Path(self.temp_dir) / "2024-01-15.txt"
+        subdir.mkdir(parents=True, exist_ok=True)
+
+        # Should not raise, should skip directory
+        cleanup_old_sent_files(self.temp_dir, keep_days=180)
+
+    def test_cleanup_old_sent_files_skips_non_txt(self):
+        """Test cleanup skips non-.txt files."""
+        # Create a .dat file
+        dat_file = Path(self.temp_dir) / "2024-01-15.dat"
+        dat_file.write_text("data", encoding="utf-8")
+
+        cleanup_old_sent_files(self.temp_dir, keep_days=180)
+
+        # File should still exist
+        self.assertTrue(dat_file.exists())
+
+    def test_cleanup_old_sent_files_invalid_date_format(self):
+        """Test cleanup skips files with invalid date format."""
+        # Create file with invalid date format
+        invalid_file = Path(self.temp_dir) / "invalid-date.txt"
+        invalid_file.write_text("hash\n", encoding="utf-8")
+
+        cleanup_old_sent_files(self.temp_dir, keep_days=180)
+
+        # File should still exist (not deleted because date parsing failed)
+        self.assertTrue(invalid_file.exists())
+
+    def test_cleanup_old_sent_files_delete_error(self):
+        """Test cleanup handles delete errors gracefully."""
+        old_date = (datetime.now() - timedelta(days=200)).strftime("%Y-%m-%d")
+        old_path = get_sent_files_path(self.temp_dir, old_date)
+        old_path.write_text("old_hash\n", encoding="utf-8")
+
+        from unittest.mock import MagicMock, patch
+
+        # Create a mock path that will raise OSError on unlink
+        mock_path = MagicMock()
+        mock_path.is_file.return_value = True
+        mock_path.suffix = ".txt"
+        mock_path.stem = old_date
+        mock_path.unlink.side_effect = OSError("Permission denied")
+
+        # Mock iterdir to return our mock path
+        with patch(
+            "email_processor.storage.sent_files_storage.Path.iterdir", return_value=[mock_path]
+        ):
+            with patch(
+                "email_processor.storage.sent_files_storage.validate_path", return_value=True
+            ):
+                with patch("email_processor.storage.sent_files_storage.datetime") as mock_datetime:
+                    mock_datetime.now.return_value.date.return_value = datetime.now().date()
+                    mock_datetime.strptime.return_value.date.return_value = (
+                        datetime.now() - timedelta(days=200)
+                    ).date()
+                    # Should not raise, should log error
+                    cleanup_old_sent_files(self.temp_dir, keep_days=180)
+
+    def test_sent_files_storage_cleanup_old(self):
+        """Test SentFilesStorage.cleanup_old method."""
+        storage = SentFilesStorage(self.temp_dir)
+        old_date = (datetime.now() - timedelta(days=200)).strftime("%Y-%m-%d")
+        old_path = get_sent_files_path(self.temp_dir, old_date)
+        old_path.write_text("old_hash\n", encoding="utf-8")
+
+        storage.cleanup_old(keep_days=180)
+
+        # Old file should be deleted
+        self.assertFalse(old_path.exists())
+
+    def test_get_sent_files_path_invalid_path(self):
+        """Test get_sent_files_path with invalid path (path traversal)."""
+        # This test requires mocking validate_path to return False
+        from unittest.mock import patch
+
+        with patch("email_processor.storage.sent_files_storage.validate_path", return_value=False):
+            with self.assertRaises(ValueError) as context:
+                get_sent_files_path(self.temp_dir, "2024-01-15")
+            self.assertIn("Invalid path detected", str(context.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
