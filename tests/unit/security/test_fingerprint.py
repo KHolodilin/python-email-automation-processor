@@ -146,45 +146,36 @@ class TestFingerprint(unittest.TestCase):
 
         import email_processor.security.fingerprint as fingerprint_module
 
-        # Save original os and getattr
+        # Save original os
         original_os = fingerprint_module.os
-        original_getattr = builtins.getattr
-
-        # Create a custom getattr that returns None for os.getuid
-        def patched_getattr(obj, name, default=None):
-            if obj is mock_os_spec and name == "getuid":
-                return default
-            return original_getattr(obj, name, default)
-
         # Replace with our mock
         fingerprint_module.os = mock_os_spec
-        # Patch builtins.getattr globally for this test
-        with patch("builtins.getattr", patched_getattr):
-            try:
-                # Mock win32security module
-                mock_win32security = unittest.mock.MagicMock()
-                mock_token = unittest.mock.MagicMock()
-                mock_user = unittest.mock.MagicMock()
-                mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
-                mock_win32security.GetTokenInformation.return_value = mock_user
-                mock_win32security.OpenProcessToken.return_value = mock_token
-                mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
-                mock_win32security.TOKEN_QUERY = 0x0008
 
-                def import_side_effect(name, *args, **kwargs):
-                    if name == "win32security":
-                        return mock_win32security
-                    # For other imports, use real import
-                    return builtins.__import__(name, *args, **kwargs)
+        try:
+            # Mock win32security module
+            mock_win32security = unittest.mock.MagicMock()
+            mock_token = unittest.mock.MagicMock()
+            mock_user = unittest.mock.MagicMock()
+            mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
+            mock_win32security.GetTokenInformation.return_value = mock_user
+            mock_win32security.OpenProcessToken.return_value = mock_token
+            mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+            mock_win32security.TOKEN_QUERY = 0x0008
 
-                mock_import.side_effect = import_side_effect
+            def import_side_effect(name, *args, **kwargs):
+                if name == "win32security":
+                    return mock_win32security
+                # For other imports, use real import
+                return builtins.__import__(name, *args, **kwargs)
 
-                user_id = get_user_id()
-                # Should return SID string
-                self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
-            finally:
-                # Restore original os
-                fingerprint_module.os = original_os
+            mock_import.side_effect = import_side_effect
+
+            user_id = get_user_id()
+            # Should return SID string
+            self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
+        finally:
+            # Restore original os
+            fingerprint_module.os = original_os
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
