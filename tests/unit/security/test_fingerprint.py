@@ -151,6 +151,30 @@ class TestFingerprint(unittest.TestCase):
         # Replace with our mock
         fingerprint_module.os = mock_os_spec
 
+        # Patch getattr in the fingerprint module's __builtins__ to handle our mock
+        # We need to intercept getattr calls for our mock object
+        original_getattr = builtins.getattr
+
+        def patched_getattr(obj, name, default=None):
+            # Check if this is our mock os object and we're looking for getuid
+            if obj is mock_os_spec and name == "getuid":
+                return default
+            # For all other cases, use the real getattr
+            return original_getattr(obj, name, default)
+
+        # Patch getattr in the module's namespace
+        # Since getattr is a builtin, we need to patch it in the module's __builtins__
+        # Get the module's builtins dict
+        module_builtins = fingerprint_module.__dict__.get("__builtins__", {})
+        original_module_getattr = None
+        if isinstance(module_builtins, dict):
+            original_module_getattr = module_builtins.get("getattr", builtins.getattr)
+            module_builtins["getattr"] = patched_getattr
+        else:
+            # If __builtins__ is a module, we can't easily patch it
+            # Instead, we'll patch it in the module's namespace directly
+            fingerprint_module.getattr = patched_getattr
+
         try:
             # Mock win32security module
             mock_win32security = unittest.mock.MagicMock()
@@ -174,8 +198,12 @@ class TestFingerprint(unittest.TestCase):
             # Should return SID string
             self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
         finally:
-            # Restore original os
+            # Restore original os and getattr
             fingerprint_module.os = original_os
+            if isinstance(module_builtins, dict) and original_module_getattr is not None:
+                module_builtins["getattr"] = original_module_getattr
+            elif hasattr(fingerprint_module, "getattr"):
+                delattr(fingerprint_module, "getattr")
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
