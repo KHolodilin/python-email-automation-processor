@@ -56,6 +56,14 @@ class TestUIDStorage(unittest.TestCase):
         # Directory should be created
         self.assertTrue(Path(self.temp_dir).exists())
 
+    @patch("email_processor.storage.uid_storage.validate_path")
+    def test_get_processed_file_path_invalid(self, mock_validate):
+        """Test get_processed_file_path raises error when path traversal detected."""
+        mock_validate.return_value = False
+        with self.assertRaises(ValueError) as context:
+            get_processed_file_path(self.temp_dir, "2024-01-01")
+        self.assertIn("Invalid path detected", str(context.exception))
+
     def test_load_processed_for_day_empty(self):
         """Test loading processed UIDs for day with no file."""
         cache = {}
@@ -240,6 +248,27 @@ class TestUIDStorage(unittest.TestCase):
 
         # File should still exist due to error
         self.assertTrue(old_path.exists())
+
+    @patch("email_processor.storage.uid_storage.validate_path")
+    def test_cleanup_old_processed_days_invalid_path(self, mock_validate):
+        """Test cleanup skips files with invalid paths."""
+        # Create a file
+        test_file = Path(self.temp_dir) / "2024-01-01.txt"
+        test_file.write_text("123\n")
+
+        # Mock validate_path to return False for this file
+        def validate_side_effect(base, target):
+            if str(target) == str(test_file):
+                return False
+            return True
+
+        mock_validate.side_effect = validate_side_effect
+
+        # Should not raise, should skip the file
+        cleanup_old_processed_days(self.temp_dir, 1)
+
+        # File should still exist (skipped due to invalid path)
+        self.assertTrue(test_file.exists())
 
 
 class TestUIDStorageClass(unittest.TestCase):
