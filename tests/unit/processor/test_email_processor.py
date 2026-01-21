@@ -116,6 +116,30 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.errors, 0)
 
     @patch("email_processor.processor.email_processor.get_imap_password")
+    def test_process_password_keyring_error(self, mock_get_password):
+        """Test processing with keyring error (KeyError)."""
+        mock_get_password.side_effect = KeyError("Password not found")
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    def test_process_password_runtime_error(self, mock_get_password):
+        """Test processing with runtime error from keyring."""
+        mock_get_password.side_effect = RuntimeError("Keyring error")
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
     def test_process_password_unexpected_error(self, mock_get_password):
         """Test processing with unexpected password error."""
         mock_get_password.side_effect = Exception("Unexpected error")
@@ -143,11 +167,123 @@ class TestEmailProcessor(unittest.TestCase):
 
     @patch("email_processor.processor.email_processor.get_imap_password")
     @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_imap_network_error_timeout(self, mock_imap_connect, mock_get_password):
+        """Test processing with timeout error."""
+        mock_get_password.return_value = "password"
+        mock_imap_connect.side_effect = TimeoutError("Connection timeout")
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_imap_network_error_oserror(self, mock_imap_connect, mock_get_password):
+        """Test processing with OSError."""
+        mock_get_password.return_value = "password"
+        mock_imap_connect.side_effect = OSError("Network error")
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_imap_connection_unexpected_error(self, mock_imap_connect, mock_get_password):
+        """Test processing with unexpected IMAP connection error."""
+        mock_get_password.return_value = "password"
+        mock_imap_connect.side_effect = ValueError("Unexpected connection error")
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
     def test_process_inbox_select_failed(self, mock_imap_connect, mock_get_password):
         """Test processing when INBOX select fails."""
         mock_get_password.return_value = "password"
         mock_mail = MagicMock()
         mock_mail.select.return_value = ("NO", [b"Select failed"])
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_inbox_select_imap_error(self, mock_imap_connect, mock_get_password):
+        """Test processing when INBOX select raises IMAP4.error."""
+        import imaplib
+
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.side_effect = imaplib.IMAP4.error("IMAP error")
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_inbox_select_invalid_state_attribute_error(
+        self, mock_imap_connect, mock_get_password
+    ):
+        """Test processing when INBOX select raises AttributeError."""
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.side_effect = AttributeError("Invalid state")
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_inbox_select_invalid_state_type_error(
+        self, mock_imap_connect, mock_get_password
+    ):
+        """Test processing when INBOX select raises TypeError."""
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.side_effect = TypeError("Invalid state")
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_inbox_select_unexpected_error(self, mock_imap_connect, mock_get_password):
+        """Test processing when INBOX select raises unexpected error."""
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.side_effect = ValueError("Unexpected error")
         mock_imap_connect.return_value = mock_mail
 
         processor = EmailProcessor(self.config)
@@ -165,6 +301,78 @@ class TestEmailProcessor(unittest.TestCase):
         mock_mail = MagicMock()
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("NO", [b"Search failed"])
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_search_imap_error(self, mock_imap_connect, mock_get_password):
+        """Test processing when search raises IMAP4.error."""
+        import imaplib
+
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.side_effect = imaplib.IMAP4.error("IMAP search error")
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_search_invalid_state_attribute_error(
+        self, mock_imap_connect, mock_get_password
+    ):
+        """Test processing when search raises AttributeError."""
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.side_effect = AttributeError("Invalid state")
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_search_invalid_state_type_error(self, mock_imap_connect, mock_get_password):
+        """Test processing when search raises TypeError."""
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.side_effect = TypeError("Invalid state")
+        mock_imap_connect.return_value = mock_mail
+
+        processor = EmailProcessor(self.config)
+        result = processor.process(dry_run=False)
+
+        self.assertEqual(result.processed, 0)
+        self.assertEqual(result.skipped, 0)
+        self.assertEqual(result.errors, 0)
+
+    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.processor.email_processor.imap_connect")
+    def test_process_search_unexpected_error(self, mock_imap_connect, mock_get_password):
+        """Test processing when search raises unexpected error."""
+        mock_get_password.return_value = "password"
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.side_effect = ValueError("Unexpected error")
         mock_imap_connect.return_value = mock_mail
 
         processor = EmailProcessor(self.config)
