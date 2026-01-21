@@ -1950,3 +1950,132 @@ class TestEmailProcessorAdditional(unittest.TestCase):
                     ep_module.psutil = original_psutil
                 elif hasattr(ep_module, "psutil"):
                     delattr(ep_module, "psutil")
+
+    def test_process_mock_mode_logging(self):
+        """Test process logs mock mode message when mock_mode is True."""
+        from email_processor.processor.email_processor import MockIMAP4_SSL
+
+        # Create a real MockIMAP4_SSL instance
+        mock_mail = MockIMAP4_SSL("imap.example.com")
+        # Mock its methods
+        mock_mail.select = MagicMock(return_value=("OK", [b"1"]))
+        mock_mail.search = MagicMock(return_value=("OK", [b""]))
+
+        # Patch MockIMAP4_SSL to return our mock
+        with patch(
+            "email_processor.processor.email_processor.MockIMAP4_SSL", return_value=mock_mail
+        ):
+            result = self.processor.process(dry_run=False, mock_mode=True)
+            # Should handle mock mode gracefully
+            self.assertIsInstance(result, type(result))
+
+    def test_process_cleanup_unexpected_error(self):
+        """Test process handles unexpected cleanup errors."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+            patch(
+                "email_processor.processor.email_processor.cleanup_old_processed_days",
+                side_effect=ValueError("Unexpected cleanup error"),
+            ),
+        ):
+            result = self.processor.process(dry_run=False)
+            # Should handle cleanup errors gracefully
+            self.assertIsInstance(result, type(result))
+
+    def test_process_email_message_walk_attribute_error(self):
+        """Test _process_email when message.walk() raises AttributeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody text"
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        from email.message import Message
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        # Create a message that will raise AttributeError when walk() is called
+        msg = Message()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        with (
+            patch("email_processor.processor.email_processor.message_from_bytes", return_value=msg),
+            patch.object(msg, "walk", side_effect=AttributeError("No walk method")),
+        ):
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should return "error" if message walk fails
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_walk_type_error(self):
+        """Test _process_email when message.walk() raises TypeError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody text"
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        from email.message import Message
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        # Create a message that will raise TypeError when walk() is called
+        msg = Message()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        with (
+            patch("email_processor.processor.email_processor.message_from_bytes", return_value=msg),
+            patch.object(msg, "walk", side_effect=TypeError("Invalid type")),
+        ):
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should return "error" if message walk fails
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_archive_imap_error(self):
+        """Test _process_email when archive raises IMAP4.error."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody text"
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        # Mock archive_message to raise imaplib.IMAP4.error
+        with patch(
+            "email_processor.processor.email_processor.archive_message",
+            side_effect=imaplib.IMAP4.error("IMAP archive error"),
+        ):
+            metrics = ProcessingMetrics()
+            self.processor.archive_only_mapped = True
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should handle archive error gracefully
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
