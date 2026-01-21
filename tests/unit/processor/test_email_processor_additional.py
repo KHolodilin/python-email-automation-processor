@@ -1181,20 +1181,27 @@ class TestEmailProcessorAdditional(unittest.TestCase):
     def test_process_email_message_parse_error_message_parse_error(self):
         """Test _process_email when message parsing raises MessageParseError."""
         import email.errors
+        from email.mime.text import MIMEText
 
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
-        msg_bytes = b"Invalid message"
+        msg_bytes = b"Invalid message"  # Non-empty bytes to pass the check
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
             ("OK", [(None, msg_bytes)]),
         ]
 
+        # Create a proper header message mock
+        header_msg = MIMEText("")
+        header_msg["From"] = "sender@example.com"
+        header_msg["Subject"] = "Invoice"
+        header_msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
         with patch(
             "email_processor.processor.email_processor.message_from_bytes",
             side_effect=[
-                MagicMock(),  # First call for header (succeeds)
+                header_msg,  # First call for header (succeeds)
                 email.errors.MessageParseError("Parse error"),  # Second call for message (fails)
             ],
         ):
@@ -1207,19 +1214,27 @@ class TestEmailProcessorAdditional(unittest.TestCase):
 
     def test_process_email_message_parse_error_unicode_decode_error(self):
         """Test _process_email when message parsing raises UnicodeDecodeError."""
+        from email.mime.text import MIMEText
+
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
-        msg_bytes = b"Invalid message"
+        msg_bytes = b"Invalid message"  # Non-empty bytes to pass the check
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
             ("OK", [(None, msg_bytes)]),
         ]
 
+        # Create a proper header message mock
+        header_msg = MIMEText("")
+        header_msg["From"] = "sender@example.com"
+        header_msg["Subject"] = "Invoice"
+        header_msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
         with patch(
             "email_processor.processor.email_processor.message_from_bytes",
             side_effect=[
-                MagicMock(),  # First call for header (succeeds)
+                header_msg,  # First call for header (succeeds)
                 UnicodeDecodeError(
                     "utf-8", b"", 0, 1, "invalid"
                 ),  # Second call for message (fails)
@@ -1236,89 +1251,98 @@ class TestEmailProcessorAdditional(unittest.TestCase):
         """Test _process_email when message parsing raises AttributeError."""
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create full_data that will cause AttributeError when accessing [0][1] or [0]
+        class BadMessageData:
+            def __getitem__(self, key):
+                if key == 0:
+                    raise AttributeError("Attribute error")
+                raise IndexError("Index error")
+
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
-            ("OK", [(None, None)]),  # Invalid message data
+            ("OK", [BadMessageData()]),  # Invalid message data that causes AttributeError
         ]
 
-        with patch(
-            "email_processor.processor.email_processor.message_from_bytes",
-            side_effect=[
-                MagicMock(),  # First call for header (succeeds)
-                AttributeError("Attribute error"),  # Second call for message (fails)
-            ],
-        ):
-            from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.processor.email_processor import ProcessingMetrics
 
-            metrics = ProcessingMetrics()
-            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
-            self.assertEqual(result, "error")
-            self.assertEqual(blocked, 0)
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
 
     def test_process_email_message_parse_data_error_index_error(self):
         """Test _process_email when message parsing raises IndexError."""
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create full_data that will cause IndexError when accessing [0]
+        class BadMessageData:
+            def __getitem__(self, key):
+                raise IndexError("Index error")
+
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
-            ("OK", []),  # Empty message data
+            ("OK", [BadMessageData()]),  # Invalid message data that causes IndexError
         ]
 
-        with patch(
-            "email_processor.processor.email_processor.message_from_bytes",
-            side_effect=[
-                MagicMock(),  # First call for header (succeeds)
-                IndexError("Index error"),  # Second call for message (fails)
-            ],
-        ):
-            from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.processor.email_processor import ProcessingMetrics
 
-            metrics = ProcessingMetrics()
-            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
-            self.assertEqual(result, "error")
-            self.assertEqual(blocked, 0)
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
 
     def test_process_email_message_parse_data_error_type_error(self):
         """Test _process_email when message parsing raises TypeError."""
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create full_data that will cause TypeError when accessing [0][1] or [0]
+        class BadMessageData:
+            def __getitem__(self, key):
+                if key == 0:
+                    raise TypeError("Type error")
+                raise IndexError("Index error")
+
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
-            ("OK", [(None, None)]),  # Invalid message data
+            ("OK", [BadMessageData()]),  # Invalid message data that causes TypeError
         ]
 
-        with patch(
-            "email_processor.processor.email_processor.message_from_bytes",
-            side_effect=[
-                MagicMock(),  # First call for header (succeeds)
-                TypeError("Type error"),  # Second call for message (fails)
-            ],
-        ):
-            from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.processor.email_processor import ProcessingMetrics
 
-            metrics = ProcessingMetrics()
-            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
-            self.assertEqual(result, "error")
-            self.assertEqual(blocked, 0)
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
 
     def test_process_email_message_parse_unexpected_error(self):
         """Test _process_email when message parsing raises unexpected error."""
+        from email.mime.text import MIMEText
+
         mock_mail = MagicMock()
         header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
-        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody"  # Non-empty bytes to pass the check
         mock_mail.fetch.side_effect = [
             ("OK", [(b"UID 123 SIZE 1000", None)]),
             ("OK", [(None, header_bytes)]),
             ("OK", [(None, msg_bytes)]),
         ]
 
+        # Create a proper header message mock
+        header_msg = MIMEText("")
+        header_msg["From"] = "sender@example.com"
+        header_msg["Subject"] = "Invoice"
+        header_msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
         with patch(
             "email_processor.processor.email_processor.message_from_bytes",
             side_effect=[
-                MagicMock(),  # First call for header (succeeds)
+                header_msg,  # First call for header (succeeds)
                 RuntimeError("Unexpected error"),  # Second call for message (fails)
             ],
         ):
