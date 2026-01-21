@@ -116,97 +116,33 @@ class TestFingerprint(unittest.TestCase):
         # Should fallback to username
         self.assertIsInstance(user_id, str)
 
-    @patch("email_processor.security.fingerprint.platform.system")
+    @patch("email_processor.security.fingerprint.platform.system", return_value="Windows")
     @patch("builtins.__import__")
-    @patch("email_processor.security.fingerprint.os")
-    def test_get_user_id_windows_with_sid(self, mock_os, mock_import, mock_system):
+    def test_get_user_id_windows_with_sid(self, mock_import, mock_system):
         """Test user ID retrieval on Windows with successful SID retrieval."""
-        mock_system.return_value = "Windows"
-        # Configure os.getenv to return testuser
-        mock_os.getenv = (
-            lambda key, default=None: "testuser" if key in ("USERNAME", "USER") else default
-        )
+        # Mock win32security module
+        mock_win32security = unittest.mock.MagicMock()
+        mock_token = unittest.mock.MagicMock()
+        mock_user = unittest.mock.MagicMock()
+        mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
 
-        # Create a custom class that doesn't have getuid
-        # Use __getattribute__ to intercept all attribute access
-        class MockOSWithoutGetuid:
-            def getenv(self, key, default=None):
-                return "testuser" if key in ("USERNAME", "USER") else default
+        mock_win32security.GetTokenInformation.return_value = mock_user
+        mock_win32security.OpenProcessToken.return_value = mock_token
+        mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+        mock_win32security.TOKEN_QUERY = 0x0008
+        mock_win32security.TokenUser = 1
 
-            def __getattribute__(self, name):
-                # Use object.__getattribute__ to avoid recursion
-                if name == "getuid":
-                    # When getattr(os, "getuid", None) is called, this will be accessed
-                    # We need to raise AttributeError so getattr returns the default (None)
-                    raise AttributeError(
-                        f"'{type(self).__name__}' object has no attribute 'getuid'"
-                    )
-                # For other attributes, use normal lookup
-                return object.__getattribute__(self, name)
+        real_import = __import__
 
-        mock_os_spec = MockOSWithoutGetuid()
-        # Patch os module to use our custom mock
-        import builtins
+        def import_side_effect(name, *args, **kwargs):
+            if name == "win32security":
+                return mock_win32security
+            return real_import(name, *args, **kwargs)
 
-        import email_processor.security.fingerprint as fingerprint_module
+        mock_import.side_effect = import_side_effect
 
-        # Save original os
-        original_os = fingerprint_module.os
-        # Replace with our mock
-        fingerprint_module.os = mock_os_spec
-
-        # Patch getattr in the fingerprint module using unittest.mock.patch
-        # We need to intercept getattr calls specifically for our mock object
-        original_getattr = builtins.getattr
-
-        # Create a wrapper that checks if we're calling getattr on our mock
-        def patched_getattr(obj, name, default=None):
-            # Check if this is our mock os object and we're looking for getuid
-            if obj is mock_os_spec and name == "getuid":
-                return default
-            # For all other cases, use the real getattr
-            return original_getattr(obj, name, default)
-
-        # Use patch to replace getattr in the fingerprint module's builtins
-        # This is the key: we need to patch getattr in the module's __builtins__
-        module_builtins = fingerprint_module.__dict__.get("__builtins__", {})
-        if isinstance(module_builtins, dict):
-            original_module_getattr = module_builtins.get("getattr", builtins.getattr)
-            module_builtins["getattr"] = patched_getattr
-        else:
-            # If __builtins__ is a module, we need to patch it differently
-            # Try to patch it in the module's globals
-            fingerprint_module.getattr = patched_getattr
-
-        try:
-            # Mock win32security module
-            mock_win32security = unittest.mock.MagicMock()
-            mock_token = unittest.mock.MagicMock()
-            mock_user = unittest.mock.MagicMock()
-            mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
-            mock_win32security.GetTokenInformation.return_value = mock_user
-            mock_win32security.OpenProcessToken.return_value = mock_token
-            mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
-            mock_win32security.TOKEN_QUERY = 0x0008
-
-            def import_side_effect(name, *args, **kwargs):
-                if name == "win32security":
-                    return mock_win32security
-                # For other imports, use real import
-                return builtins.__import__(name, *args, **kwargs)
-
-            mock_import.side_effect = import_side_effect
-
-            user_id = get_user_id()
-            # Should return SID string
-            self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
-        finally:
-            # Restore original os and getattr
-            fingerprint_module.os = original_os
-            if isinstance(module_builtins, dict):
-                module_builtins["getattr"] = original_module_getattr
-            elif hasattr(fingerprint_module, "getattr"):
-                delattr(fingerprint_module, "getattr")
+        user_id = get_user_id()
+        self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
