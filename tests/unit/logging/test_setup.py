@@ -175,3 +175,82 @@ class TestLoggingManager(unittest.TestCase):
 
         logger_with_uid = LoggingManager.get_logger(uid="12345")
         self.assertIsNotNone(logger_with_uid)
+
+    def test_setup_logging_file_permission_error(self):
+        """Test setup_logging handles PermissionError when creating log file."""
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_dir = Path(tmpdir) / "logs"
+            # Mock Path.mkdir to raise PermissionError
+            with patch(
+                "email_processor.logging.setup.Path.mkdir",
+                side_effect=PermissionError("Access denied"),
+            ):
+                # Should not raise, should print warning
+                with patch("builtins.print") as mock_print:
+                    setup_logging(
+                        {
+                            "level": "INFO",
+                            "format": "console",
+                            "format_file": "json",
+                            "file": str(log_dir),
+                        }
+                    )
+                    # Check that warning was printed
+                    mock_print.assert_called()
+                    call_args = str(mock_print.call_args)
+                    self.assertIn("Warning", call_args)
+                    self.assertIn("file logging", call_args)
+
+    def test_setup_logging_file_os_error(self):
+        """Test setup_logging handles OSError when creating log file."""
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_dir = Path(tmpdir) / "logs"
+            # Mock Path.mkdir to raise OSError
+            with patch(
+                "email_processor.logging.setup.Path.mkdir", side_effect=OSError("Disk full")
+            ):
+                # Should not raise, should print warning
+                with patch("builtins.print") as mock_print:
+                    setup_logging(
+                        {
+                            "level": "INFO",
+                            "format": "console",
+                            "format_file": "json",
+                            "file": str(log_dir),
+                        }
+                    )
+                    # Check that warning was printed
+                    mock_print.assert_called()
+                    call_args = str(mock_print.call_args)
+                    self.assertIn("Warning", call_args)
+
+    def test_setup_logging_file_unexpected_error(self):
+        """Test setup_logging handles unexpected errors when creating log file."""
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_dir = Path(tmpdir) / "logs"
+            # Mock Path.mkdir to raise unexpected exception
+            with patch(
+                "email_processor.logging.setup.Path.mkdir",
+                side_effect=ValueError("Unexpected error"),
+            ):
+                # Should not raise, should print warning
+                with patch("builtins.print") as mock_print:
+                    setup_logging(
+                        {
+                            "level": "INFO",
+                            "format": "console",
+                            "format_file": "json",
+                            "file": str(log_dir),
+                        }
+                    )
+                    # Check that warning was printed
+                    mock_print.assert_called()
+                    call_args = str(mock_print.call_args)
+                    self.assertIn("Warning", call_args)
+                    self.assertIn("Unexpected error", call_args)
