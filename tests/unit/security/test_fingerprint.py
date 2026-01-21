@@ -118,7 +118,7 @@ class TestFingerprint(unittest.TestCase):
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
-    @patch("email_processor.security.fingerprint.os", spec_set=["getenv"])
+    @patch("email_processor.security.fingerprint.os")
     def test_get_user_id_windows_with_sid(self, mock_os, mock_import, mock_system):
         """Test user ID retrieval on Windows with successful SID retrieval."""
         mock_system.return_value = "Windows"
@@ -126,29 +126,35 @@ class TestFingerprint(unittest.TestCase):
         mock_os.getenv = (
             lambda key, default=None: "testuser" if key in ("USERNAME", "USER") else default
         )
-        # Mock win32security module
-        mock_win32security = unittest.mock.MagicMock()
-        mock_token = unittest.mock.MagicMock()
-        mock_user = unittest.mock.MagicMock()
-        mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
-        mock_win32security.GetTokenInformation.return_value = mock_user
-        mock_win32security.OpenProcessToken.return_value = mock_token
-        mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
-        mock_win32security.TOKEN_QUERY = 0x0008
+        # Create a custom mock that doesn't have getuid
+        # Use spec_set to prevent getuid from being created
+        mock_os_spec = unittest.mock.Mock(spec=["getenv"])
+        mock_os_spec.getenv = mock_os.getenv
+        # Patch os module to use our custom mock
+        with patch("email_processor.security.fingerprint.os", mock_os_spec):
+            # Mock win32security module
+            mock_win32security = unittest.mock.MagicMock()
+            mock_token = unittest.mock.MagicMock()
+            mock_user = unittest.mock.MagicMock()
+            mock_user[0].Sid = "S-1-5-21-1234567890-1234567890-1234567890-1001"
+            mock_win32security.GetTokenInformation.return_value = mock_user
+            mock_win32security.OpenProcessToken.return_value = mock_token
+            mock_win32security.GetCurrentProcess.return_value = unittest.mock.MagicMock()
+            mock_win32security.TOKEN_QUERY = 0x0008
 
-        def import_side_effect(name, *args, **kwargs):
-            if name == "win32security":
-                return mock_win32security
-            # For other imports, use real import
-            import builtins
+            def import_side_effect(name, *args, **kwargs):
+                if name == "win32security":
+                    return mock_win32security
+                # For other imports, use real import
+                import builtins
 
-            return builtins.__import__(name, *args, **kwargs)
+                return builtins.__import__(name, *args, **kwargs)
 
-        mock_import.side_effect = import_side_effect
+            mock_import.side_effect = import_side_effect
 
-        user_id = get_user_id()
-        # Should return SID string
-        self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
+            user_id = get_user_id()
+            # Should return SID string
+            self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
