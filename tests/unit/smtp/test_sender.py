@@ -361,6 +361,131 @@ class TestEmailSender(unittest.TestCase):
             # Number of send_message calls depends on splitting
             self.assertGreaterEqual(mock_smtp.send_message.call_count, 1)
 
+    @patch("email_processor.smtp.smtp_connect")
+    def test_send_files_oserror_attach(self, mock_connect):
+        """Test send_files handles OSError when attaching file."""
+        mock_smtp = MagicMock()
+        mock_smtp.send_message.return_value = None
+        mock_connect.return_value = mock_smtp
+
+        sender = EmailSender(
+            smtp_server="smtp.example.com",
+            smtp_port=587,
+            smtp_user="user@example.com",
+            smtp_password="password",
+            from_address="sender@example.com",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test.pdf"
+            file_path.write_bytes(b"test content")
+
+            # Mock Path.open to raise OSError when attaching (in create_email_message)
+            # Need to patch where the file is actually opened
+            original_open = Path.open
+
+            def mock_open(self, mode="r", *args, **kwargs):
+                if mode == "rb" and str(self) == str(file_path):
+                    raise OSError("Permission denied")
+                return original_open(self, mode, *args, **kwargs)
+
+            with patch.object(Path, "open", mock_open):
+                # OSError is caught and logged, then caught in general exception handler
+                # Function should return False
+                result = sender.send_files([file_path], "recipient@example.com", dry_run=False)
+                self.assertFalse(result)
+
+    def test_send_files_valueerror_split(self):
+        """Test send_files handles ValueError from split_files_by_size."""
+        sender = EmailSender(
+            smtp_server="smtp.example.com",
+            smtp_port=587,
+            smtp_user="user@example.com",
+            smtp_password="password",
+            from_address="sender@example.com",
+            max_email_size_mb=0.001,  # Very small limit
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a file that's too large for the limit
+            file_path = Path(tmpdir) / "large.txt"
+            file_path.write_bytes(b"x" * (2 * 1024 * 1024))  # 2MB
+
+            result = sender.send_files([file_path], "recipient@example.com", dry_run=False)
+            # Should return False when ValueError is raised
+            self.assertFalse(result)
+
+    @patch("email_processor.smtp.smtp_connect")
+    def test_send_files_custom_subject(self, mock_connect):
+        """Test send_files with custom subject parameter."""
+        mock_smtp = MagicMock()
+        mock_smtp.send_message.return_value = None
+        mock_connect.return_value = mock_smtp
+
+        sender = EmailSender(
+            smtp_server="smtp.example.com",
+            smtp_port=587,
+            smtp_user="user@example.com",
+            smtp_password="password",
+            from_address="sender@example.com",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test.pdf"
+            file_path.write_bytes(b"test content")
+
+            result = sender.send_files(
+                [file_path], "recipient@example.com", subject="Custom Subject", dry_run=False
+            )
+            self.assertTrue(result)
+
+    @patch("email_processor.smtp.smtp_connect")
+    def test_send_files_package_template(self, mock_connect):
+        """Test send_files uses package template for multiple files."""
+        mock_smtp = MagicMock()
+        mock_smtp.send_message.return_value = None
+        mock_connect.return_value = mock_smtp
+
+        sender = EmailSender(
+            smtp_server="smtp.example.com",
+            smtp_port=587,
+            smtp_user="user@example.com",
+            smtp_password="password",
+            from_address="sender@example.com",
+            subject_template_package="Package: {file_count} files",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file1 = Path(tmpdir) / "file1.pdf"
+            file2 = Path(tmpdir) / "file2.pdf"
+            file1.write_bytes(b"content1")
+            file2.write_bytes(b"content2")
+
+            result = sender.send_files([file1, file2], "recipient@example.com", dry_run=False)
+            self.assertTrue(result)
+
+    @patch("email_processor.smtp.smtp_connect")
+    def test_send_files_exception_handling(self, mock_connect):
+        """Test send_files handles general exceptions."""
+        # Make smtp_connect raise an exception
+        mock_connect.side_effect = Exception("Connection failed")
+
+        sender = EmailSender(
+            smtp_server="smtp.example.com",
+            smtp_port=587,
+            smtp_user="user@example.com",
+            smtp_password="password",
+            from_address="sender@example.com",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test.pdf"
+            file_path.write_bytes(b"test content")
+
+            result = sender.send_files([file_path], "recipient@example.com", dry_run=False)
+            # Should return False on exception
+            self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()
