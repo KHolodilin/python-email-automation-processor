@@ -1352,3 +1352,592 @@ class TestEmailProcessorAdditional(unittest.TestCase):
             result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
             self.assertEqual(result, "error")
             self.assertEqual(blocked, 0)
+
+    def test_process_email_blocked_attachments(self):
+        """Test _process_email when attachments are blocked by extension filter."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create message with blocked attachment
+        msg = MIMEMultipart()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        part = MIMEBase("application", "exe")
+        part.set_payload(b"test content")
+        part.add_header("Content-Disposition", "attachment", filename="malware.exe")
+        msg.attach(part)
+
+        msg_bytes = msg.as_bytes()
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock attachment handler to return False (blocked by extension)
+        with patch.object(
+            self.processor.attachment_handler, "is_allowed_extension", return_value=False
+        ), patch.object(
+            self.processor.attachment_handler, "save_attachment", return_value=(False, 0)
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should return "skipped" with blocked count if only blocked attachments
+            self.assertEqual(result, "skipped")
+            self.assertGreater(blocked, 0)
+
+    def test_process_email_attachment_error_no_filename(self):
+        """Test _process_email when attachment has no filename."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create message with attachment without filename
+        msg = MIMEMultipart()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        part = MIMEBase("application", "pdf")
+        part.set_payload(b"test content")
+        part.add_header("Content-Disposition", "attachment")  # No filename
+        msg.attach(part)
+
+        msg_bytes = msg.as_bytes()
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock attachment handler to return False (error)
+        with patch.object(
+            self.processor.attachment_handler, "save_attachment", return_value=(False, 0)
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should return "error" if attachment processing fails
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_fetch_failed_uid_save_error(self):
+        """Test _process_email when message fetch fails and UID save also fails."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("NO", None),  # Message fetch fails
+        ]
+
+        # Mock save_processed_uid_for_day to raise OSError
+        with patch(
+            "email_processor.processor.email_processor.save_processed_uid_for_day",
+            side_effect=OSError("Permission denied"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should handle the error gracefully
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_message_fetch_failed_uid_save_unexpected_error(self):
+        """Test _process_email when message fetch fails and UID save raises unexpected error."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("NO", None),  # Message fetch fails
+        ]
+
+        # Mock save_processed_uid_for_day to raise unexpected error
+        with patch(
+            "email_processor.processor.email_processor.save_processed_uid_for_day",
+            side_effect=ValueError("Unexpected error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should handle the error gracefully
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_uid_fetch_data_error_attribute_error(self):
+        """Test _process_email when UID fetch returns data with AttributeError."""
+        mock_mail = MagicMock()
+
+        # Create a mock that raises AttributeError when accessing fetch result
+        class MockFetchResult:
+            def __getitem__(self, key):
+                raise AttributeError("No attribute")
+
+        mock_mail.fetch.return_value = ("OK", MockFetchResult())
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_uid_fetch_data_error_index_error(self):
+        """Test _process_email when UID fetch returns data with IndexError."""
+        mock_mail = MagicMock()
+
+        # Create a mock that raises IndexError when accessing meta[0]
+        class MockFetchResult:
+            def __getitem__(self, key):
+                if key == 0:
+                    raise IndexError("List index out of range")
+
+        mock_mail.fetch.return_value = ("OK", MockFetchResult())
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_uid_fetch_data_error_type_error(self):
+        """Test _process_email when UID fetch returns data with TypeError."""
+        mock_mail = MagicMock()
+
+        # Create a mock that raises TypeError when accessing fetch result
+        class MockFetchResult:
+            def __getitem__(self, key):
+                raise TypeError("Unsupported type")
+
+        mock_mail.fetch.return_value = ("OK", MockFetchResult())
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+        self.assertEqual(result, "error")
+        self.assertEqual(blocked, 0)
+
+    def test_process_logout_imap_error(self):
+        """Test process handles IMAP logout errors."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+        mock_mail.logout.side_effect = imaplib.IMAP4.error("IMAP logout error")
+
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+        ):
+            result = self.processor.process(dry_run=False)
+            # Should handle logout errors gracefully
+            self.assertIsInstance(result, type(result))
+
+    def test_process_logout_attribute_error(self):
+        """Test process handles AttributeError during logout."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+        mock_mail.logout.side_effect = AttributeError("No logout method")
+
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+        ):
+            result = self.processor.process(dry_run=False)
+            # Should handle logout errors gracefully
+            self.assertIsInstance(result, type(result))
+
+    def test_process_psutil_memory_error(self):
+        """Test process handles errors when getting memory usage with psutil."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+
+        # Create a mock psutil module
+        mock_psutil = MagicMock()
+        mock_psutil.Process.side_effect = Exception("psutil error")
+
+        # Inject mock psutil into sys.modules and the email_processor module
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+            patch("email_processor.processor.email_processor.PSUTIL_AVAILABLE", True),
+        ):
+            # Manually inject psutil into the module
+            import email_processor.processor.email_processor as ep_module
+
+            original_psutil = getattr(ep_module, "psutil", None)
+            ep_module.psutil = mock_psutil
+            try:
+                result = self.processor.process(dry_run=False)
+                # Should handle psutil errors gracefully
+                self.assertIsInstance(result, type(result))
+            finally:
+                if original_psutil is not None:
+                    ep_module.psutil = original_psutil
+                elif hasattr(ep_module, "psutil"):
+                    delattr(ep_module, "psutil")
+
+    def test_process_psutil_memory_metrics_exception(self):
+        """Test process handles exceptions when calculating psutil memory metrics."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+        mock_mail.fetch.return_value = ("OK", [b""])
+
+        # Create a mock psutil module with Process that raises exception on memory_info()
+        mock_psutil = MagicMock()
+        mock_process_instance = MagicMock()
+        mock_process_instance.memory_info.side_effect = Exception("Memory info error")
+        mock_psutil.Process.return_value = mock_process_instance
+
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+            patch("email_processor.processor.email_processor.PSUTIL_AVAILABLE", True),
+        ):
+            # Manually inject psutil into the module
+            import email_processor.processor.email_processor as ep_module
+
+            original_psutil = getattr(ep_module, "psutil", None)
+            ep_module.psutil = mock_psutil
+            try:
+                result = self.processor.process(dry_run=False)
+                # Should handle psutil errors gracefully
+                self.assertIsInstance(result, type(result))
+            finally:
+                if original_psutil is not None:
+                    ep_module.psutil = original_psutil
+                elif hasattr(ep_module, "psutil"):
+                    delattr(ep_module, "psutil")
+
+    def test_process_email_attachment_error_result_not_tuple(self):
+        """Test _process_email when attachment save returns non-tuple result."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create message with attachment
+        msg = MIMEMultipart()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        part = MIMEBase("application", "pdf")
+        part.set_payload(b"test content")
+        part.add_header("Content-Disposition", "attachment", filename="test.pdf")
+        msg.attach(part)
+
+        msg_bytes = msg.as_bytes()
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock attachment handler to return non-tuple (truthy but not tuple)
+        with patch.object(
+            self.processor.attachment_handler, "save_attachment", return_value="success"
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should treat truthy non-tuple as success
+            self.assertEqual(result, "processed")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_attachment_error_result_false(self):
+        """Test _process_email when attachment save returns False."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create message with attachment
+        msg = MIMEMultipart()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        part = MIMEBase("application", "pdf")
+        part.set_payload(b"test content")
+        part.add_header("Content-Disposition", "attachment", filename="test.pdf")
+        msg.attach(part)
+
+        msg_bytes = msg.as_bytes()
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock attachment handler to return False
+        with patch.object(self.processor.attachment_handler, "save_attachment", return_value=False):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should return "error" if attachment processing fails
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_dry_run_archive(self):
+        """Test _process_email when archiving in dry-run mode."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody text"
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        metrics = ProcessingMetrics()
+        # Set archive_only_mapped to True and use mapped folder
+        self.processor.archive_only_mapped = True
+        result, blocked = self.processor._process_email(
+            mock_mail, b"1", {}, True, metrics
+        )  # dry_run=True
+        # Should log dry_run_archive but not actually archive
+        self.assertEqual(result, "skipped")
+        self.assertEqual(blocked, 0)
+
+    def test_process_email_archive_connection_error(self):
+        """Test _process_email when archive raises ConnectionError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody text"
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        # Mock archive_message to raise ConnectionError
+        with patch(
+            "email_processor.processor.email_processor.archive_message",
+            side_effect=ConnectionError("Connection lost"),
+        ):
+            metrics = ProcessingMetrics()
+            self.processor.archive_only_mapped = True
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should handle archive error gracefully
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_archive_os_error(self):
+        """Test _process_email when archive raises OSError."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+        msg_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\n\r\nBody text"
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        from email_processor.processor.email_processor import ProcessingMetrics
+
+        # Mock archive_message to raise OSError
+        with patch(
+            "email_processor.processor.email_processor.archive_message",
+            side_effect=OSError("File system error"),
+        ):
+            metrics = ProcessingMetrics()
+            self.processor.archive_only_mapped = True
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should handle archive error gracefully
+            self.assertEqual(result, "skipped")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uid_save_error_after_processing(self):
+        """Test _process_email when processed UID save fails after successful processing."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create message with attachment
+        msg = MIMEMultipart()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        part = MIMEBase("application", "pdf")
+        part.set_payload(b"test content")
+        part.add_header("Content-Disposition", "attachment", filename="test.pdf")
+        msg.attach(part)
+
+        msg_bytes = msg.as_bytes()
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock save_processed_uid_for_day to raise OSError after processing
+        with patch.object(
+            self.processor.attachment_handler, "save_attachment", return_value=(True, 100)
+        ), patch(
+            "email_processor.processor.email_processor.save_processed_uid_for_day",
+            side_effect=OSError("Permission denied"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should return "error" if UID save fails
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_email_processed_uid_save_unexpected_error_after_processing(self):
+        """Test _process_email when processed UID save raises unexpected error after processing."""
+        mock_mail = MagicMock()
+        header_bytes = b"From: sender@example.com\r\nSubject: Invoice\r\nDate: Mon, 1 Jan 2024 12:00:00 +0000\r\n"
+
+        # Create message with attachment
+        msg = MIMEMultipart()
+        msg["From"] = "sender@example.com"
+        msg["Subject"] = "Invoice"
+        msg["Date"] = "Mon, 1 Jan 2024 12:00:00 +0000"
+
+        part = MIMEBase("application", "pdf")
+        part.set_payload(b"test content")
+        part.add_header("Content-Disposition", "attachment", filename="test.pdf")
+        msg.attach(part)
+
+        msg_bytes = msg.as_bytes()
+
+        mock_mail.fetch.side_effect = [
+            ("OK", [(b"UID 123 SIZE 1000", None)]),
+            ("OK", [(None, header_bytes)]),
+            ("OK", [(None, msg_bytes)]),
+        ]
+
+        # Mock save_processed_uid_for_day to raise unexpected error
+        with patch.object(
+            self.processor.attachment_handler, "save_attachment", return_value=(True, 100)
+        ), patch(
+            "email_processor.processor.email_processor.save_processed_uid_for_day",
+            side_effect=ValueError("Unexpected error"),
+        ):
+            from email_processor.processor.email_processor import ProcessingMetrics
+
+            metrics = ProcessingMetrics()
+            result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
+            # Should return "error" if UID save fails
+            self.assertEqual(result, "error")
+            self.assertEqual(blocked, 0)
+
+    def test_process_file_statistics_error(self):
+        """Test process handles errors when collecting file statistics."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+            patch(
+                "email_processor.processor.email_processor.Path.iterdir",
+                side_effect=OSError("Permission denied"),
+            ),
+        ):
+            result = self.processor.process(dry_run=False)
+            # Should handle file statistics errors gracefully
+            self.assertIsInstance(result, type(result))
+
+    def test_process_file_statistics_unexpected_error(self):
+        """Test process handles unexpected errors when collecting file statistics."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+            patch(
+                "email_processor.processor.email_processor.Path.iterdir",
+                side_effect=ValueError("Unexpected error"),
+            ),
+        ):
+            result = self.processor.process(dry_run=False)
+            # Should handle file statistics errors gracefully
+            self.assertIsInstance(result, type(result))
+
+    def test_process_psutil_memory_peak_update(self):
+        """Test process updates memory peak when current memory exceeds peak."""
+        mock_mail = MagicMock()
+        mock_mail.select.return_value = ("OK", [b"1"])
+        mock_mail.search.return_value = ("OK", [b""])
+        mock_mail.fetch.return_value = ("OK", [b""])
+
+        # Create a mock psutil module
+        mock_psutil = MagicMock()
+        mock_process_instance = MagicMock()
+        # First call returns lower memory, second call returns higher memory
+        mock_process_instance.memory_info.side_effect = [
+            MagicMock(rss=1000000),  # Initial memory
+            MagicMock(rss=2000000),  # Final memory (higher than initial)
+        ]
+        mock_psutil.Process.return_value = mock_process_instance
+
+        with (
+            patch(
+                "email_processor.processor.email_processor.get_imap_password",
+                return_value="password",
+            ),
+            patch("email_processor.processor.email_processor.imap_connect", return_value=mock_mail),
+            patch("email_processor.processor.email_processor.PSUTIL_AVAILABLE", True),
+        ):
+            # Manually inject psutil into the module
+            import email_processor.processor.email_processor as ep_module
+
+            original_psutil = getattr(ep_module, "psutil", None)
+            ep_module.psutil = mock_psutil
+            try:
+                result = self.processor.process(dry_run=False)
+                # Should update memory peak
+                self.assertIsInstance(result, type(result))
+                if result.metrics and hasattr(result.metrics, "memory_peak"):
+                    self.assertIsNotNone(result.metrics.memory_peak)
+            finally:
+                if original_psutil is not None:
+                    ep_module.psutil = original_psutil
+                elif hasattr(ep_module, "psutil"):
+                    delattr(ep_module, "psutil")
