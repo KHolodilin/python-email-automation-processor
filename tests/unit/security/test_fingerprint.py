@@ -96,18 +96,6 @@ class TestFingerprint(unittest.TestCase):
     @patch("builtins.__import__")
     def test_get_user_id_windows_with_sid(self, mock_import, mock_system):
         """Windows with pywin32 available and SID retrieval success -> returns SID."""
-        # Patch os.getuid to None so getattr(os, "getuid", None) returns None on Linux
-        # This ensures the test works on all platforms
-        import email_processor.security.fingerprint as fingerprint_module
-
-        original_os = fingerprint_module.os
-        # Create a mock os that doesn't have getuid
-        mock_os = unittest.mock.MagicMock()
-        mock_os.getenv = original_os.getenv
-        # Remove getuid if it exists
-        if hasattr(mock_os, "getuid"):
-            delattr(mock_os, "getuid")
-        fingerprint_module.os = mock_os
         mock_win32security = MagicMock()
 
         # Realistic return structure:
@@ -130,11 +118,8 @@ class TestFingerprint(unittest.TestCase):
 
         mock_import.side_effect = import_side_effect
 
-        try:
-            user_id = get_user_id()
-            self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
-        finally:
-            fingerprint_module.os = original_os
+        user_id = get_user_id()
+        self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
 
     @patch("email_processor.security.fingerprint.platform.system", return_value="Windows")
     @patch("builtins.__import__")
