@@ -126,12 +126,14 @@ class TestFingerprint(unittest.TestCase):
         mock_os.getenv = (
             lambda key, default=None: "testuser" if key in ("USERNAME", "USER") else default
         )
-        # Create a custom mock that doesn't have getuid
-        # Use spec_set to prevent getuid from being created
-        mock_os_spec = unittest.mock.Mock(spec_set=["getenv"])
-        mock_os_spec.getenv = mock_os.getenv
-        # Make sure getattr returns None for getuid
-        # We need to patch the os module reference in fingerprint module
+
+        # Create a custom class that doesn't have getuid
+        class MockOSWithoutGetuid:
+            def getenv(self, key, default=None):
+                return "testuser" if key in ("USERNAME", "USER") else default
+
+        mock_os_spec = MockOSWithoutGetuid()
+        # Patch os module to use our custom mock
         import email_processor.security.fingerprint as fingerprint_module
 
         # Save original os
