@@ -122,6 +122,17 @@ class TestSMTPConnection(unittest.TestCase):
         )
         self.assertEqual(mock_smtp.login.call_count, 2)
 
+    @patch("email_processor.smtp.client.smtplib.SMTP")
+    def test_smtp_connect_unexpected_exception(self, mock_smtp_class):
+        """Test SMTP connection with unexpected exception (not SMTPException)."""
+        # Raise an unexpected exception during connection
+        mock_smtp_class.side_effect = RuntimeError("Unexpected error")
+
+        with self.assertRaises(ConnectionError) as context:
+            smtp_connect("smtp.example.com", 587, "user", "password", use_tls=True, max_retries=1)
+
+        self.assertIn("Unexpected error connecting", str(context.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
