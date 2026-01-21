@@ -510,6 +510,19 @@ pip install ruff mypy types-PyYAML
   mypy email_processor  # Type check
   ```
 
+### Test Coverage
+
+The project uses [Codecov](https://codecov.io) for test coverage tracking and reporting. Coverage reports are automatically generated during CI runs and uploaded to Codecov.
+
+- **View coverage reports**: [Codecov Dashboard](https://codecov.io/gh/vkholodilin/python-email-automation-processor)
+- **Run tests with coverage locally**:
+  ```bash
+  pytest --cov=email_processor --cov-report=term-missing --cov-report=html
+  ```
+- **View HTML coverage report**: Open `htmlcov/index.html` in your browser after running tests
+
+The project maintains a minimum test coverage threshold of 70% (with plans to increase to 95%+). Coverage reports help identify untested code paths and ensure code quality.
+
 See `CONTRIBUTING.md` for detailed development guidelines.
 
 ---
