@@ -100,6 +100,14 @@ class TestFingerprint(unittest.TestCase):
         # Should return username (on Windows, pywin32 may not be available)
         self.assertIsInstance(user_id, str)
 
+    @patch("email_processor.security.fingerprint.get_mac_address")
+    def test_get_system_fingerprint_no_mac(self, mock_get_mac):
+        """Test system fingerprint generation when MAC is unavailable."""
+        mock_get_mac.return_value = None
+        fingerprint = get_system_fingerprint()
+        self.assertIsInstance(fingerprint, str)
+        self.assertEqual(len(fingerprint), 64)  # SHA256 hex digest length
+
     @patch("email_processor.security.fingerprint.platform.system")
     def test_get_user_id_general_exception(self, mock_system):
         """Test user ID retrieval when general exception occurs."""
