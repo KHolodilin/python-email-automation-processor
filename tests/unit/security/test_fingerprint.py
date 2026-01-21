@@ -128,10 +128,18 @@ class TestFingerprint(unittest.TestCase):
         )
         # Create a custom mock that doesn't have getuid
         # Use spec_set to prevent getuid from being created
-        mock_os_spec = unittest.mock.Mock(spec=["getenv"])
+        mock_os_spec = unittest.mock.Mock(spec_set=["getenv"])
         mock_os_spec.getenv = mock_os.getenv
-        # Patch os module to use our custom mock
-        with patch("email_processor.security.fingerprint.os", mock_os_spec):
+        # Make sure getattr returns None for getuid
+        # We need to patch the os module reference in fingerprint module
+        import email_processor.security.fingerprint as fingerprint_module
+
+        # Save original os
+        original_os = fingerprint_module.os
+        # Replace with our mock
+        fingerprint_module.os = mock_os_spec
+
+        try:
             # Mock win32security module
             mock_win32security = unittest.mock.MagicMock()
             mock_token = unittest.mock.MagicMock()
@@ -155,6 +163,9 @@ class TestFingerprint(unittest.TestCase):
             user_id = get_user_id()
             # Should return SID string
             self.assertEqual(user_id, "S-1-5-21-1234567890-1234567890-1234567890-1001")
+        finally:
+            # Restore original os
+            fingerprint_module.os = original_os
 
     @patch("email_processor.security.fingerprint.platform.system")
     @patch("builtins.__import__")
