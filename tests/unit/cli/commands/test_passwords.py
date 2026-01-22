@@ -390,7 +390,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                                         # Verify that mock_path.stat() was called (permission check)
                                         mock_path.stat.assert_called()
                                         # Verify that stat.filemode() was called
-                                        mock_filemode.assert_called_once_with(
+                                        mock_filemode_patch.assert_called_once_with(
                                             mock_stat_result.st_mode
                                         )
                                         # Check that warning was printed
