@@ -321,11 +321,16 @@ class TestPasswordFileErrors(unittest.TestCase):
             # Create a fully mocked Path object
             mock_path = MagicMock(spec=Path)
             mock_path.exists.return_value = True
+
             # Mock the stat() call to return a file with open permissions
-            mock_stat_result = MagicMock()
-            # Set st_mode to have group and other read permissions
-            # This ensures the condition file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH) is True
-            mock_stat_result.st_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
+            # Use a simple object instead of MagicMock to ensure bitwise operations work
+            class MockStatResult:
+                def __init__(self):
+                    # Set st_mode to have group and other read permissions
+                    # This ensures the condition file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH) is True
+                    self.st_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
+
+            mock_stat_result = MockStatResult()
             mock_path.stat.return_value = mock_stat_result
             # Make sure mock_path behaves like a Path object
             mock_path.__str__ = MagicMock(return_value=password_file)
@@ -375,7 +380,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                                 with patch(
                                     "email_processor.cli.commands.passwords.stat.filemode",
                                     return_value="-rw-r--r--",
-                                ):
+                                ) as mock_filemode_patch:
                                     with patch("builtins.open", create=True) as mock_open:
                                         mock_file = MagicMock()
                                         mock_file.readline.return_value = "test_password\n"
@@ -384,6 +389,10 @@ class TestPasswordFileErrors(unittest.TestCase):
                                         self.assertEqual(result, 0)
                                         # Verify that mock_path.stat() was called (permission check)
                                         mock_path.stat.assert_called()
+                                        # Verify that stat.filemode() was called
+                                        mock_filemode.assert_called_once_with(
+                                            mock_stat_result.st_mode
+                                        )
                                         # Check that warning was printed
                                         # Warning message contains "permissions" or "open permissions"
                                         warning_calls = [
@@ -442,11 +451,16 @@ class TestPasswordFileErrors(unittest.TestCase):
             # Create a fully mocked Path object
             mock_path = MagicMock(spec=Path)
             mock_path.exists.return_value = True
+
             # Mock the stat() call to return a file with open permissions
-            mock_stat_result = MagicMock()
-            # Set st_mode to have group and other read permissions
-            # This ensures the condition file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH) is True
-            mock_stat_result.st_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
+            # Use a simple object instead of MagicMock to ensure bitwise operations work
+            class MockStatResult:
+                def __init__(self):
+                    # Set st_mode to have group and other read permissions
+                    # This ensures the condition file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH) is True
+                    self.st_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
+
+            mock_stat_result = MockStatResult()
             mock_path.stat.return_value = mock_stat_result
             # Make sure mock_path behaves like a Path object
             mock_path.__str__ = MagicMock(return_value=password_file)
@@ -501,7 +515,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                             with patch(
                                 "email_processor.cli.commands.passwords.stat.filemode",
                                 return_value="-rw-r--r--",
-                            ):
+                            ) as mock_filemode_patch:
                                 with patch("builtins.open", create=True) as mock_open:
                                     mock_file = MagicMock()
                                     mock_file.readline.return_value = "test_password\n"
@@ -510,6 +524,10 @@ class TestPasswordFileErrors(unittest.TestCase):
                                     self.assertEqual(result, 0)
                                     # Verify that mock_path.stat() was called (permission check)
                                     mock_path.stat.assert_called()
+                                    # Verify that stat.filemode() was called
+                                    mock_filemode_patch.assert_called_once_with(
+                                        mock_stat_result.st_mode
+                                    )
                                     # Check that warning was printed with rich console
                                     # Warning is printed via ui.warn(), which uses console.print() when rich is available
                                     warning_calls_ui = [
