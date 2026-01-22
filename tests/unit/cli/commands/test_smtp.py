@@ -1,5 +1,6 @@
 """Tests for SMTP send commands."""
 
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -67,9 +68,18 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file exists
+                self.assertTrue(
+                    self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 mock_sender.send_file.assert_called_once()
                 mock_storage.mark_as_sent.assert_called_once()
 
@@ -149,9 +159,18 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file exists
+                self.assertTrue(
+                    self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 mock_ui.warn.assert_called()
                 mock_sender.send_file.assert_not_called()
 
@@ -202,9 +221,18 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file exists
+                self.assertTrue(
+                    self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 # In dry-run mode, send_file is called but with dry_run=True
                 mock_sender.send_file.assert_called_once()
                 mock_storage.mark_as_sent.assert_not_called()
@@ -300,9 +328,19 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file/folder exists for file/folder tests
+                if hasattr(self, "test_file") and "file" in str(sys.argv):
+                    self.assertTrue(
+                        self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                    )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 self.assertEqual(mock_sender.send_file.call_count, 2)
                 self.assertEqual(mock_storage.mark_as_sent.call_count, 2)
                 mock_ui.print.assert_called()
@@ -355,9 +393,19 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file/folder exists for file/folder tests
+                if hasattr(self, "test_file") and "file" in str(sys.argv):
+                    self.assertTrue(
+                        self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                    )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 self.assertEqual(mock_sender.send_file.call_count, 2)
                 mock_ui.print.assert_called()
 
@@ -406,9 +454,19 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file/folder exists for file/folder tests
+                if hasattr(self, "test_file") and "file" in str(sys.argv):
+                    self.assertTrue(
+                        self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                    )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 mock_sender.send_file.assert_not_called()
                 mock_ui.print.assert_called()
 
@@ -664,9 +722,19 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file/folder exists for file/folder tests
+                if hasattr(self, "test_file") and "file" in str(sys.argv):
+                    self.assertTrue(
+                        self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                    )
                 result = main()
-                self.assertEqual(result, 0)  # Success
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )  # Success
                 # Check that skipped message was printed
                 mock_ui.print.assert_called()
 
@@ -844,9 +912,19 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file/folder exists for file/folder tests
+                if hasattr(self, "test_file") and "file" in str(sys.argv):
+                    self.assertTrue(
+                        self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                    )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 mock_sender.send_file.assert_called_once_with(
                     self.test_file, "custom@example.com", None, dry_run=False
                 )
@@ -899,9 +977,19 @@ class TestSMTPSend(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                 mock_ui = MagicMock()
+                mock_ui.has_rich = False
                 mock_ui_class.return_value = mock_ui
+                # Ensure file/folder exists for file/folder tests
+                if hasattr(self, "test_file") and "file" in str(sys.argv):
+                    self.assertTrue(
+                        self.test_file.exists(), f"Test file should exist: {self.test_file}"
+                    )
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(
+                    result,
+                    0,
+                    f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
+                )
                 mock_sender.send_file.assert_called_once_with(
                     self.test_file, "test@example.com", "Custom Subject", dry_run=False
                 )
