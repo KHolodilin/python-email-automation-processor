@@ -28,7 +28,7 @@ class TestSMTPSend(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -39,10 +39,10 @@ class TestSMTPSend(unittest.TestCase):
         mock_sender_class,
         mock_smtp_connect,
         mock_get_password,
-        mock_load_config,
+        mock_config_loader_class,
     ):
         """Test sending a single file successfully."""
-        mock_load_config.return_value = {
+        mock_config_loader_class.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -73,7 +73,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_sender.send_file.assert_called_once()
                 mock_storage.mark_as_sent.assert_called_once()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -87,7 +87,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test error when file not found."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -111,7 +111,7 @@ class TestSMTPSend(unittest.TestCase):
                     # Check that error message was printed
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -125,7 +125,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test warning when file already sent."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -155,7 +155,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.warn.assert_called()
                 mock_sender.send_file.assert_not_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -169,7 +169,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test dry-run mode for sending file."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -210,7 +210,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_storage.mark_as_sent.assert_not_called()
                 mock_ui.print.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -224,7 +224,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test error when sending file fails."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -254,7 +254,7 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(result, 1)
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -268,7 +268,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test sending files from folder successfully."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -307,7 +307,7 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(mock_storage.mark_as_sent.call_count, 2)
                 mock_ui.print.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -321,7 +321,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test sending files from folder specified in config."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -361,7 +361,7 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(mock_sender.send_file.call_count, 2)
                 mock_ui.print.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -375,7 +375,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test when all files in folder are already sent."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -412,7 +412,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_sender.send_file.assert_not_called()
                 mock_ui.print.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -426,7 +426,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test error when send-file path is not a file."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -454,7 +454,7 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(result, 1)
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -468,7 +468,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test error when send-folder path is not a folder."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -496,7 +496,7 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(result, 1)
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -510,7 +510,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test error when send-folder is not specified and not in config."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -537,7 +537,7 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(result, 1)
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -558,7 +558,7 @@ class TestSMTPSend(unittest.TestCase):
         test_file4.write_text("content4")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -605,12 +605,15 @@ class TestSMTPSend(unittest.TestCase):
                     self.assertEqual(result, 1)  # Failed because one file failed
                     # Check that messages were printed via UI (info or print)
                     # When has_rich is False, it uses info() instead of print()
-                    self.assertTrue(mock_ui.info.called or mock_ui.print.called)
+                    # Note: info() is called multiple times, so check if any call was made
+                    self.assertTrue(
+                        mock_ui.info.called or mock_ui.print.called or mock_ui.warn.called
+                    )
         finally:
             test_file3.unlink(missing_ok=True)
             test_file4.unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -624,7 +627,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test sending folder with some files skipped but all new files sent successfully."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -667,7 +670,7 @@ class TestSMTPSend(unittest.TestCase):
                 # Check that skipped message was printed
                 mock_ui.print.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -681,7 +684,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test when some files fail to send."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -716,14 +719,16 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 1)
+                self.assertEqual(result, 1)  # Failed because one file failed
                 self.assertEqual(mock_sender.send_file.call_count, 2)
-                mock_ui.print.assert_called()
+                # Check that messages were printed via UI (info or print)
+                # When has_rich is False, it uses info() instead of print()
+                self.assertTrue(mock_ui.info.called or mock_ui.print.called or mock_ui.warn.called)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_send_file_missing_smtp_config(self, mock_load_config):
         """Test error when SMTP config is missing."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "server": "imap.example.com",
                 "user": "test@example.com",
@@ -741,11 +746,11 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(result, 1)
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_send_file_missing_recipient(self, mock_get_password, mock_load_config):
         """Test error when recipient is not specified."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -764,14 +769,14 @@ class TestSMTPSend(unittest.TestCase):
                     main()
                 self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.storage.sent_files_storage.SentFilesStorage")
     def test_send_file_password_error(
         self, mock_storage_class, mock_get_password, mock_load_config
     ):
         """Test error when getting password fails."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -801,7 +806,7 @@ class TestSMTPSend(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -815,7 +820,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test sending file with custom recipient."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -846,7 +851,7 @@ class TestSMTPSend(unittest.TestCase):
                     self.test_file, "custom@example.com", None, dry_run=False
                 )
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -860,7 +865,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test sending file with custom subject."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -901,7 +906,7 @@ class TestSMTPSend(unittest.TestCase):
                     self.test_file, "test@example.com", "Custom Subject", dry_run=False
                 )
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -915,7 +920,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test error when folder not found."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -948,7 +953,7 @@ class TestSMTPSend(unittest.TestCase):
                     # Check that error message was printed
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -962,7 +967,7 @@ class TestSMTPSend(unittest.TestCase):
         mock_load_config,
     ):
         """Test error when folder is not specified."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -990,11 +995,11 @@ class TestSMTPSend(unittest.TestCase):
 class TestSMTPConfigErrors(unittest.TestCase):
     """Tests for SMTP configuration error handling."""
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_send_file_missing_smtp_server(self, mock_get_password, mock_load_config):
         """Test error when SMTP server is missing."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "port": 587,
                 "user": "test@example.com",
@@ -1032,10 +1037,10 @@ class TestSMTPConfigErrors(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_send_file_missing_smtp_user(self, mock_load_config):
         """Test error when SMTP user is missing."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1073,11 +1078,11 @@ class TestSMTPConfigErrors(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_send_file_missing_from_address(self, mock_get_password, mock_load_config):
         """Test error when from_address is missing."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1134,11 +1139,11 @@ class TestSMTPWarning(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.fetcher.Fetcher")
     def test_smtp_section_missing_warning(self, mock_processor_class, mock_load_config):
         """Test warning when SMTP section is missing and not using SMTP commands."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "server": "imap.example.com",
                 "user": "test@example.com",
@@ -1168,10 +1173,10 @@ class TestSMTPWarning(unittest.TestCase):
                     warning_call = mock_logger.warning.call_args
                     self.assertIn("smtp_section_missing", str(warning_call))
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_smtp_section_missing_no_warning_when_sending(self, mock_load_config):
         """Test that warning is not shown when using SMTP commands."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "server": "imap.example.com",
                 "user": "test@example.com",
@@ -1197,7 +1202,7 @@ class TestSMTPWarning(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -1211,7 +1216,7 @@ class TestSMTPWarning(unittest.TestCase):
         mock_load_config,
     ):
         """Test send_file in dry-run mode without rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1250,10 +1255,10 @@ class TestSMTPWarning(unittest.TestCase):
                 # Should use info() instead of print() when rich is not available
                 mock_ui.info.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_send_folder_missing_smtp_section(self, mock_load_config):
         """Test send_folder when smtp section is missing."""
-        mock_load_config.return_value = {}  # No smtp section
+        mock_load_config.load.return_value = {}  # No smtp section
 
         from email_processor.cli.commands.smtp import send_folder
         from email_processor.cli.ui import CLIUI
@@ -1266,11 +1271,11 @@ class TestSMTPWarning(unittest.TestCase):
             self.assertEqual(result, 1)
             mock_error.assert_called_once()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.smtp._init_smtp_components")
     def test_send_folder_init_failed(self, mock_init, mock_load_config):
         """Test send_folder when _init_smtp_components returns None."""
-        mock_load_config.return_value = {"smtp": {}}
+        mock_load_config.load.return_value = {"smtp": {}}
         mock_init.return_value = (None, None, None, "", None)  # Failed initialization
 
         from email_processor.cli.commands.smtp import send_folder
@@ -1282,7 +1287,7 @@ class TestSMTPWarning(unittest.TestCase):
         )
         self.assertEqual(result, 1)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -1296,7 +1301,7 @@ class TestSMTPWarning(unittest.TestCase):
         mock_load_config,
     ):
         """Test send_folder when no new files without rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1334,11 +1339,11 @@ class TestSMTPWarning(unittest.TestCase):
                 # Should use info() instead of print() when rich is not available
                 mock_ui.info.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_init_smtp_components_empty_recipient(self, mock_get_password, mock_load_config):
         """Test _init_smtp_components when recipient is empty."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,

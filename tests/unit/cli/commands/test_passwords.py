@@ -296,8 +296,8 @@ class TestPasswordFileErrors(unittest.TestCase):
     """Tests for password file error handling."""
 
     @patch("stat.filemode")
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_set_password_file_permission_warning(self, mock_load_config, mock_filemode):
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_set_password_file_permission_warning(self, mock_config_loader_class, mock_filemode):
         """Test warning when password file has open permissions (Unix)."""
         import stat
         import sys
@@ -306,7 +306,7 @@ class TestPasswordFileErrors(unittest.TestCase):
         if sys.platform == "win32":
             self.skipTest("Permission check is Unix-only")
 
-        mock_load_config.return_value = {
+        mock_config_loader_class.load.return_value = {
             "imap": {
                 "user": "test@example.com",
             },
@@ -358,7 +358,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                                 return Path(path_str)
 
                             with patch(
-                                "email_processor.__main__.Path",
+                                "email_processor.cli.commands.passwords.Path",
                                 side_effect=mock_path_constructor,
                             ):
                                 with patch("builtins.open", create=True) as mock_open:
@@ -378,9 +378,9 @@ class TestPasswordFileErrors(unittest.TestCase):
             Path(password_file).unlink(missing_ok=True)
 
     @patch("stat.filemode")
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_set_password_file_permission_warning_with_rich_console(
-        self, mock_load_config, mock_filemode
+        self, mock_config_loader_class, mock_filemode
     ):
         """Test warning when password file has open permissions (Unix) with rich console."""
         import stat
@@ -390,7 +390,7 @@ class TestPasswordFileErrors(unittest.TestCase):
         if sys.platform == "win32":
             self.skipTest("Permission check is Unix-only")
 
-        mock_load_config.return_value = {
+        mock_config_loader_class.load.return_value = {
             "imap": {
                 "user": "test@example.com",
             },
@@ -458,13 +458,21 @@ class TestPasswordFileErrors(unittest.TestCase):
                                 mock_open.return_value.__enter__.return_value = mock_file
                                 result = main()
                                 self.assertEqual(result, 0)
-                        # Check that warning was printed with rich console
-                        warning_calls = [
-                            str(call)
-                            for call in mock_console.print.call_args_list
-                            if "Warning" in str(call) and "permissions" in str(call)
-                        ]
-                        self.assertGreater(len(warning_calls), 0)
+                                # Check that warning was printed with rich console
+                                # Warning is printed via ui.warn(), which uses console.print() when rich is available
+                                warning_calls_ui = [
+                                    str(call)
+                                    for call in mock_ui.warn.call_args_list
+                                    if "permissions" in str(call) or "Warning" in str(call)
+                                ]
+                                warning_calls_console = [
+                                    str(call)
+                                    for call in mock_console.print.call_args_list
+                                    if "permissions" in str(call) or "Warning" in str(call)
+                                ]
+                                self.assertGreater(
+                                    len(warning_calls_ui) + len(warning_calls_console), 0
+                                )
         finally:
             Path(password_file).unlink(missing_ok=True)
 

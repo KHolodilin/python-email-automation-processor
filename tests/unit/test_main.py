@@ -13,9 +13,11 @@ from email_processor.imap.fetcher import ProcessingMetrics, ProcessingResult
 class TestMainEntryPoint(unittest.TestCase):
     """Tests for main entry point."""
 
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.passwords.clear_passwords")
-    def test_main_clear_passwords_mode(self, mock_clear_passwords):
+    def test_main_clear_passwords_mode(self, mock_clear_passwords, mock_config_loader_class):
         """Test main function in password clear mode."""
+        mock_config_loader_class.load.return_value = {"imap": {}}
         mock_clear_passwords.return_value = 0
 
         with patch(
@@ -1015,8 +1017,10 @@ class TestRunCommand(unittest.TestCase):
                 self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
                 mock_ui.error.assert_called()
 
-    def test_unknown_command(self):
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_unknown_command(self, mock_config_loader_class):
         """Test unknown command handling."""
+        mock_config_loader_class.load.return_value = {"imap": {}}
         with patch("sys.argv", ["email_processor", "unknown_command"]):
             with patch("email_processor.__main__.parse_arguments") as mock_parse:
                 mock_args = MagicMock()
