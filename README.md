@@ -390,7 +390,7 @@ topic_mapping:
 - `smtp.use_ssl`: Use SSL encryption (default: `false`, use for port 465)
 - `smtp.max_email_size`: Maximum email size in MB (default: `25`)
 - `smtp.sent_files_dir`: Directory for storing sent file hashes (default: `"sent_files"`)
-- `smtp.send_folder`: Default folder to send files from (optional, can be overridden with `--send-folder`)
+- `smtp.send_folder`: Default folder to send files from (optional, can be overridden with `send folder` command)
 - `smtp.subject_template`: Template for single file subject (e.g., `"File: {filename}"`)
 - `smtp.subject_template_package`: Template for multiple files subject (e.g., `"Package - {file_count} files"`)
 
@@ -437,15 +437,15 @@ On first run, the script will prompt for password and offer to save it.
 ### ➕ Set Password from File
 ```bash
 # Read password from file and save it
-python -m email_processor --set-password --password-file ~/.pass
+python -m email_processor password set --user your_email@example.com --password-file ~/.pass
 
 # Read password from file, save it, and remove the file
-python -m email_processor --set-password --password-file ~/.pass --remove-password-file
+python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
 ```
 
 **Security Notes:**
 - Password file should have restricted permissions (chmod 600 on Unix)
-- Use `--remove-password-file` to automatically delete the file after reading
+- Use `--delete-after-read` to automatically delete the file after reading
 - Password is encrypted before saving to keyring
 - Supports complex passwords via file (can copy-paste)
 
@@ -456,7 +456,7 @@ echo "your_complex_password" > ~/.email_password
 chmod 600 ~/.email_password  # Restrict access (Unix only)
 
 # Set password and remove file
-python -m email_processor --set-password --password-file ~/.email_password --remove-password-file
+python -m email_processor password set --user your_email@example.com --password-file ~/.email_password --delete-after-read
 ```
 
 ### 🔍 Read Password
@@ -658,7 +658,7 @@ Dictionary of regex patterns to folder paths. Emails matching a pattern will be 
 - ✅ **Keyring password storage** - Secure credential management
 - ✅ **Per-day UID storage** - Optimized performance
 - ✅ **Two-phase IMAP fetch** - Efficient email processing
-- ✅ **Password management command** - `--clear-passwords` option
+- ✅ **Password management commands** - `password set` and `password clear` subcommands
 - ✅ **Configuration validation** - Validates config on startup
 - ✅ **Structured logging** - JSON and console formats with file output
 - ✅ **Configurable logging levels** - DEBUG, INFO, WARNING, ERROR, CRITICAL
