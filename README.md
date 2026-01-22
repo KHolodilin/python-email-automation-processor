@@ -6,7 +6,7 @@ Email Processor is a reliable, idempotent, and secure tool for automatic email p
 - **SMTP**: sends files via email with automatic tracking of sent files
 - stores processed email UIDs in separate files by date
 - uses keyring for secure password storage
-- **supports new command: `--clear-passwords`**
+- **поддержка командной структуры с подкомандами**
 - **progress bar** for long-running operations
 - **file extension filtering** (whitelist/blacklist)
 - **disk space checking** before downloads
@@ -52,142 +52,220 @@ This ensures:
 
 ---
 
-# 🎯 Usage
+# 🚀 Быстрый старт
 
-## Running the Processor
+## Установка и первая настройка
 
-### Normal Mode
+### 1. Установка зависимостей
 ```bash
-python -m email_processor
-# or after installation:
-email-processor
+# Создайте виртуальное окружение (рекомендуется)
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# или
+source .venv/bin/activate  # Linux/macOS
+
+# Установите зависимости
+pip install -r requirements.txt
 ```
 
-### Custom Configuration File
+### 2. Создание конфигурации
 ```bash
-python -m email_processor --config /path/to/custom_config.yaml
+# Создайте файл конфигурации из шаблона
+python -m email_processor config init
+
+# Отредактируйте config.yaml с вашими настройками IMAP/SMTP
 ```
 
-**Note:** By default, the processor uses `config.yaml` in the current directory. Use `--config` to specify a different configuration file path.
-
-### Dry-Run Mode (Test without downloading)
+### 3. Установка пароля
 ```bash
-python -m email_processor --dry-run
+# Установите пароль для IMAP (будет запрошен интерактивно)
+python -m email_processor password set --user your_email@example.com
+
+# Или из файла
+python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
 ```
 
-**Note:** In dry-run mode, the processor connects to the IMAP server to retrieve and analyze the email list (to display statistics), but files are not downloaded and emails are not archived.
-
-### Dry-Run Mode with Mock Server (No connection)
+### 4. Проверка конфигурации
 ```bash
-python -m email_processor --dry-run-no-connect
+# Проверьте корректность конфигурации
+python -m email_processor config validate
+
+# Просмотрите статус системы
+python -m email_processor status
 ```
 
-**Note:** The `--dry-run-no-connect` mode uses a mocked IMAP server with test data. It does not require a real mail server connection or a password. It is useful for testing configuration without server access. It uses 3 test emails:
-- Email from `client1@example.com` with subject "Roadmap Q1 2024" and attachment `roadmap.pdf`
-- Email from `finance@example.com` with subject "Invoice #12345" and attachment `invoice.pdf`
-- Email from `spam@example.com` with subject "Spam Subject" and attachment `spam.exe` (will be skipped if the sender is not in the allowed list)
-
-### Show Version
+### 5. Первый запуск
 ```bash
-python -m email_processor --version
+# Запустите обработку писем (тестовый режим без реальных действий)
+python -m email_processor fetch --dry-run
+
+# Реальный запуск
+python -m email_processor fetch
 ```
-
-### Clear Saved Passwords
-```bash
-python -m email_processor --clear-passwords
-```
-
-### Create Default Configuration
-```bash
-python -m email_processor --create-config
-```
-
-**Note:** This command creates a default `config.yaml` file from `config.yaml.example`. If the file already exists, you'll be prompted to confirm overwriting it. You can combine it with `--config` to specify a custom path:
-
-```bash
-python -m email_processor --create-config --config /path/to/custom_config.yaml
-```
-
-## SMTP Email Sending
-
-### Send a Single File
-```bash
-python -m email_processor --send-file /path/to/file.pdf
-```
-
-### Send All New Files from Folder
-```bash
-# Send from specific folder
-python -m email_processor --send-folder /path/to/folder
-
-# Send from default folder (uses smtp.send_folder from config.yaml)
-python -m email_processor --send-folder
-```
-
-**Note:**
-- Files are tracked by SHA256 hash, so renamed or moved files won't be sent again if they have the same content
-- If `--send-folder` is used without path, the default folder from `smtp.send_folder` in config.yaml will be used
-- Set `smtp.send_folder: "folder_name"` in config.yaml to use default folder
-
-### Override Recipient
-```bash
-python -m email_processor --send-file file.pdf --recipient user@example.com
-```
-
-### Override Subject
-```bash
-python -m email_processor --send-file file.pdf --subject "Custom subject"
-```
-
-### Dry-Run Mode for Sending
-```bash
-python -m email_processor --send-file file.pdf --dry-run-send
-```
-
-**Note:** In dry-run mode, the processor simulates sending without actually connecting to SMTP server. Useful for testing configuration and checking what would be sent.
-
-### Features
-- **Automatic file tracking**: Files are tracked by SHA256 hash to prevent duplicate sends
-- **Size limit handling**: Automatically splits large file packages into multiple emails
-- **Subject templates**: Customize email subjects using templates with variables
-- **Password reuse**: Uses the same keyring password as IMAP (no separate password needed)
 
 ---
 
-# ✨ Password Management Command
+# 🎯 Использование
 
-This command:
+## Основные команды
 
-### ✔ removes saved password from keyring
-### ✔ allows setting a new password on next run
-### ✔ useful when:
-- IMAP password expired / was changed
-- switching to a different email account
-- need to reset authorization without accessing Credential Manager
+### Обработка писем
+
+#### Полный пайплайн (fetch + send)
+```bash
+# Обработать письма и отправить файлы
+python -m email_processor run
+
+# С ограничениями
+python -m email_processor run --since 7d --max-emails 100
+```
+
+#### Только получение писем (без отправки)
+```bash
+# Получить письма и вложения
+python -m email_processor fetch
+
+# Обработать письма за последние 7 дней
+python -m email_processor fetch --since 7d
+
+# Обработать конкретную папку
+python -m email_processor fetch --folder "INBOX/Important"
+
+# Ограничить количество писем
+python -m email_processor fetch --max-emails 50
+
+# Тестовый режим (без реальных действий)
+python -m email_processor fetch --dry-run
+
+# Тестовый режим с мок-сервером (без подключения)
+python -m email_processor fetch --dry-run-no-connect
+```
+
+### Отправка файлов по email
+
+#### Отправить один файл
+```bash
+# Отправить файл (--to обязателен)
+python -m email_processor send file /path/to/file.pdf --to recipient@example.com
+
+# С кастомной темой
+python -m email_processor send file file.pdf --to user@example.com --subject "Важный документ"
+
+# С CC и BCC
+python -m email_processor send file file.pdf --to user@example.com --cc copy@example.com --bcc hidden@example.com
+
+# Тестовый режим (без реальной отправки)
+python -m email_processor send file file.pdf --to user@example.com --dry-run
+```
+
+#### Отправить все файлы из папки
+```bash
+# Отправить все новые файлы из папки
+python -m email_processor send folder /path/to/folder --to recipient@example.com
+
+# С кастомной темой
+python -m email_processor send folder /path/to/folder --to user@example.com --subject "Пакет файлов"
+```
+
+**Примечания:**
+- Файлы отслеживаются по SHA256 хешу, поэтому переименованные файлы с тем же содержимым не будут отправлены повторно
+- Уже отправленные файлы автоматически пропускаются
+
+### Управление паролями
+
+#### Установить пароль
+```bash
+# Интерактивный ввод пароля
+python -m email_processor password set --user your_email@example.com
+
+# Из файла (файл будет удален после чтения)
+python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
+```
+
+#### Очистить пароль
+```bash
+# Удалить сохраненный пароль
+python -m email_processor password clear --user your_email@example.com
+```
+
+### Управление конфигурацией
+
+#### Создать конфигурацию
+```bash
+# Создать config.yaml из шаблона
+python -m email_processor config init
+
+# С указанием пути
+python -m email_processor config init --path /path/to/custom_config.yaml
+```
+
+#### Проверить конфигурацию
+```bash
+# Валидация конфигурации
+python -m email_processor config validate
+
+# С указанием файла
+python -m email_processor config validate --config /path/to/config.yaml
+```
+
+### Просмотр статуса
+```bash
+# Показать статус системы
+python -m email_processor status
+```
+
+Показывает:
+- Версию приложения
+- Путь к конфигурации
+- Настройки IMAP/SMTP
+- Доступность keyring
+- Статистику хранилищ
+
+### Глобальные опции
+
+Все команды поддерживают следующие опции:
+
+```bash
+# Указать конфигурационный файл
+--config /path/to/config.yaml
+
+# Тестовый режим (без реальных действий)
+--dry-run
+
+# Уровень логирования
+--log-level DEBUG|INFO|WARNING|ERROR
+
+# Путь к файлу логов
+--log-file /path/to/logs/app.log
+
+# JSON формат логов
+--json-logs
+
+# Подробный вывод
+--verbose
+
+# Тихий режим (только ошибки)
+--quiet
+
+# Версия
+--version
+```
+
+### Примеры комбинирования опций
+
+```bash
+# Подробный вывод с DEBUG логированием
+python -m email_processor fetch --verbose --log-level DEBUG
+
+# Тестовый режим с JSON логами
+python -m email_processor run --dry-run --json-logs
+
+# Обработка с ограничениями и логированием
+python -m email_processor fetch --since 3d --max-emails 20 --log-file logs/run.log
+```
 
 ---
 
-## 🔧 How `--clear-passwords` Works
-
-1. Script reads `imap.user` from `config.yaml`
-2. Requests confirmation:
-
-```
-Do you really want to delete saved passwords? [y/N]:
-```
-
-3. If user answers `y`:
-  - password `email-vkh-processor / <user>` is removed from keyring
-
-4. Script outputs report:
-
-```
-Done. Deleted entries: 1
-```
-
-5. On next normal mode run, the script will prompt for a new password.
-
----
 
 ## 🔒 Password Encryption
 
@@ -389,7 +467,7 @@ keyring.get_password("email-vkh-processor", "your_email@example.com")
 
 ### 🗑️ Delete Password
 ```bash
-python -m email_processor --clear-passwords
+python -m email_processor password clear --user your_email@example.com
 ```
 
 ### ➕ Add Password Manually
