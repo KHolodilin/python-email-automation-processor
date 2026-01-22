@@ -70,6 +70,9 @@ unfixable = []
 "email_processor/security/encryption.py" = [
     "PLC0415", # Import cryptography inside function (lazy import for optional dependency)
 ]
+"email_processor/cli/commands/imap.py" = [
+    "PLC0415", # Import rich.table inside function (lazy import for optional dependency)
+]
 
 [lint.isort]
 known-first-party = ["email_processor"]
