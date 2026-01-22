@@ -388,10 +388,13 @@ class TestPasswordFileErrors(unittest.TestCase):
                                         mock_path.stat.assert_called()
                                         # Verify that stat.filemode() was called
                                         # Note: stat.filemode() might not be called if an exception occurs
-                                        if mock_filemode_patch.called:
-                                            mock_filemode_patch.assert_called_once_with(
-                                                mock_stat_result.st_mode
-                                            )
+                                        self.assertTrue(
+                                            mock_filemode_patch.called,
+                                            "stat.filemode() should be called",
+                                        )
+                                        mock_filemode_patch.assert_called_once_with(
+                                            mock_stat_result.st_mode
+                                        )
                                         # Debug: Check if condition would be true
                                         condition_result = mock_stat_result.st_mode & (
                                             stat.S_IRGRP | stat.S_IROTH
@@ -404,28 +407,18 @@ class TestPasswordFileErrors(unittest.TestCase):
                                         )
                                         # Check that warning was printed
                                         # Warning message contains "permissions" or "open permissions"
-                                        warning_calls = [
-                                            call
-                                            for call in mock_ui.warn.call_args_list
-                                            if "permissions" in str(call).lower()
-                                            or "warning" in str(call).lower()
-                                        ]
-                                        # If no warning calls found, check if warn was called at all
-                                        if len(warning_calls) == 0 and mock_ui.warn.called:
-                                            # Get all warn calls to debug
-                                            all_warn_calls = [
-                                                str(call) for call in mock_ui.warn.call_args_list
-                                            ]
-                                            # Check if any call contains permission-related text
-                                            warning_calls = [
-                                                call
-                                                for call in all_warn_calls
-                                                if "permission" in call.lower()
-                                            ]
-                                        self.assertGreater(
-                                            len(warning_calls),
-                                            0,
-                                            f"No permission warning found. Warn calls: {mock_ui.warn.call_args_list}, stat called: {mock_path.stat.called}",
+                                        self.assertTrue(
+                                            mock_ui.warn.called,
+                                            f"ui.warn() should be called. Warn calls: {mock_ui.warn.call_args_list}, "
+                                            f"stat called: {mock_path.stat.called}, "
+                                            f"filemode called: {mock_filemode_patch.called}",
+                                        )
+                                        # Check that the warning message contains "permissions"
+                                        warn_calls_str = str(mock_ui.warn.call_args_list).lower()
+                                        self.assertIn(
+                                            "permission",
+                                            warn_calls_str,
+                                            f"Warning should contain 'permission'. Warn calls: {mock_ui.warn.call_args_list}",
                                         )
         finally:
             Path(password_file).unlink(missing_ok=True)
@@ -530,27 +523,34 @@ class TestPasswordFileErrors(unittest.TestCase):
                                     # Verify that mock_path.stat() was called (permission check)
                                     mock_path.stat.assert_called()
                                     # Verify that stat.filemode() was called
+                                    self.assertTrue(
+                                        mock_filemode_patch.called,
+                                        "stat.filemode() should be called",
+                                    )
                                     mock_filemode_patch.assert_called_once_with(
                                         mock_stat_result.st_mode
                                     )
                                     # Check that warning was printed with rich console
                                     # Warning is printed via ui.warn(), which uses console.print() when rich is available
-                                    warning_calls_ui = [
-                                        str(call)
-                                        for call in mock_ui.warn.call_args_list
-                                        if "permissions" in str(call).lower()
-                                        or "warning" in str(call).lower()
-                                    ]
-                                    warning_calls_console = [
-                                        str(call)
-                                        for call in mock_console.print.call_args_list
-                                        if "permissions" in str(call).lower()
-                                        or "warning" in str(call).lower()
-                                    ]
-                                    self.assertGreater(
-                                        len(warning_calls_ui) + len(warning_calls_console),
-                                        0,
-                                        f"No permission warning found. UI warn calls: {mock_ui.warn.call_args_list}, Console print calls: {mock_console.print.call_args_list}, stat called: {mock_path.stat.called}",
+                                    self.assertTrue(
+                                        mock_ui.warn.called or mock_console.print.called,
+                                        f"ui.warn() or console.print() should be called. "
+                                        f"UI warn calls: {mock_ui.warn.call_args_list}, "
+                                        f"Console print calls: {mock_console.print.call_args_list}, "
+                                        f"stat called: {mock_path.stat.called}, "
+                                        f"filemode called: {mock_filemode_patch.called}",
+                                    )
+                                    # Check that the warning message contains "permissions"
+                                    warn_calls_str = str(mock_ui.warn.call_args_list).lower()
+                                    console_calls_str = str(
+                                        mock_console.print.call_args_list
+                                    ).lower()
+                                    self.assertTrue(
+                                        "permission" in warn_calls_str
+                                        or "permission" in console_calls_str,
+                                        f"Warning should contain 'permission'. "
+                                        f"UI warn calls: {mock_ui.warn.call_args_list}, "
+                                        f"Console print calls: {mock_console.print.call_args_list}",
                                     )
         finally:
             Path(password_file).unlink(missing_ok=True)
