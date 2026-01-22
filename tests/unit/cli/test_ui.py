@@ -14,14 +14,14 @@ from email_processor.imap.fetcher import ProcessingMetrics, ProcessingResult
 class TestRichConsoleOutput(unittest.TestCase):
     """Tests for rich console output functionality."""
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.fetcher.Fetcher")
     @patch("email_processor.cli.commands.imap._display_results")
     def test_main_with_rich_console(
         self, mock_display_results, mock_processor_class, mock_load_config
     ):
         """Test main function uses rich console when available."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "server": "imap.example.com",
                 "user": "test@example.com",
@@ -50,11 +50,11 @@ class TestRichConsoleOutput(unittest.TestCase):
                     # Results should be displayed
                     mock_display_results.assert_called_once()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.fetcher.Fetcher")
     def test_main_without_rich_console(self, mock_processor_class, mock_load_config):
         """Test main function falls back to print when rich is not available."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "server": "imap.example.com",
                 "user": "test@example.com",
@@ -81,7 +81,7 @@ class TestRichConsoleOutput(unittest.TestCase):
                     # When has_rich is False, it uses info() instead of print()
                     self.assertTrue(mock_ui.info.called or mock_ui.print.called)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.config.create_default_config")
     def test_create_config_with_rich_console(self, mock_create_config, mock_load_config):
         """Test create_config uses rich console when available."""
@@ -97,10 +97,10 @@ class TestRichConsoleOutput(unittest.TestCase):
                 result = main()
                 self.assertEqual(result, 0)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_config_error_with_rich_console(self, mock_load_config):
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_config_error_with_rich_console(self, mock_config_loader_class):
         """Test config error uses rich console when available."""
-        mock_load_config.side_effect = ValueError("Configuration validation failed")
+        mock_config_loader_class.load.side_effect = ValueError("Configuration validation failed")
         mock_console = MagicMock()
 
         with patch("email_processor.__main__.CLIUI") as mock_ui_class:
@@ -113,10 +113,10 @@ class TestRichConsoleOutput(unittest.TestCase):
                 self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_config_error_without_rich_console(self, mock_load_config):
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_config_error_without_rich_console(self, mock_config_loader_class):
         """Test config error falls back to print when rich is not available."""
-        mock_load_config.side_effect = ValueError("Configuration validation failed")
+        mock_config_loader_class.load.side_effect = ValueError("Configuration validation failed")
 
         with patch("email_processor.__main__.CLIUI") as mock_ui_class:
             mock_ui = MagicMock()
@@ -127,10 +127,12 @@ class TestRichConsoleOutput(unittest.TestCase):
                 self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_file_not_found_error_with_rich_console(self, mock_load_config):
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_file_not_found_error_with_rich_console(self, mock_config_loader_class):
         """Test file not found error uses rich console when available."""
-        mock_load_config.side_effect = FileNotFoundError("Configuration file not found")
+        mock_config_loader_class.load.side_effect = FileNotFoundError(
+            "Configuration file not found"
+        )
         mock_console = MagicMock()
 
         with patch("email_processor.__main__.CLIUI") as mock_ui_class:
@@ -143,10 +145,10 @@ class TestRichConsoleOutput(unittest.TestCase):
                 self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_unexpected_error_with_rich_console(self, mock_load_config):
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_unexpected_error_with_rich_console(self, mock_config_loader_class):
         """Test unexpected error uses rich console when available."""
-        mock_load_config.side_effect = Exception("Unexpected error")
+        mock_config_loader_class.load.side_effect = Exception("Unexpected error")
         mock_console = MagicMock()
 
         with patch("email_processor.__main__.CLIUI") as mock_ui_class:
@@ -159,10 +161,10 @@ class TestRichConsoleOutput(unittest.TestCase):
                 self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
                 mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_unexpected_error_without_rich_console(self, mock_load_config):
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_unexpected_error_without_rich_console(self, mock_config_loader_class):
         """Test unexpected error falls back to print when rich is not available."""
-        mock_load_config.side_effect = Exception("Unexpected error")
+        mock_config_loader_class.load.side_effect = Exception("Unexpected error")
 
         with patch("email_processor.__main__.CLIUI") as mock_ui_class:
             mock_ui = MagicMock()
@@ -363,11 +365,11 @@ class TestDisplayResultsRich(unittest.TestCase):
 class TestMainRichConsoleOutput(unittest.TestCase):
     """Tests for main function with rich console output."""
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.passwords.clear_passwords")
     def test_clear_passwords_with_rich_console(self, mock_clear_passwords, mock_load_config):
         """Test clear_passwords mode with rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "user": "test@example.com",
             },
@@ -391,10 +393,10 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     main()
                     mock_clear_passwords.assert_called_once()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_clear_passwords_missing_user_with_rich_console(self, mock_load_config):
         """Test clear_passwords mode with missing user and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {},
         }
         mock_console = MagicMock()
@@ -417,10 +419,10 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_set_password_missing_user_with_rich_console(self, mock_load_config):
         """Test set_password mode with missing user and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {},
         }
         mock_console = MagicMock()
@@ -451,10 +453,10 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_set_password_missing_password_file_with_rich_console(self, mock_load_config):
         """Test set_password mode with missing password_file arg and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "user": "test@example.com",
             },
@@ -479,10 +481,10 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     def test_set_password_file_not_found_with_rich_console(self, mock_load_config):
         """Test set_password mode with file not found and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "user": "test@example.com",
             },
@@ -515,7 +517,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.security.encryption.encrypt_password")
     @patch("keyring.set_password")
     def test_set_password_success_with_rich_console(
@@ -527,7 +529,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             f.write("testpassword\n")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "imap": {
                     "user": "test@example.com",
                 },
@@ -564,7 +566,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.passwords.encrypt_password")
     @patch("keyring.set_password")
     def test_set_password_encryption_fallback_with_rich_console(
@@ -576,7 +578,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             f.write("testpassword\n")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "imap": {
                     "user": "test@example.com",
                 },
@@ -617,7 +619,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.security.encryption.encrypt_password")
     @patch("keyring.set_password")
     def test_set_password_save_error_with_rich_console(
@@ -629,7 +631,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             f.write("testpassword\n")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "imap": {
                     "user": "test@example.com",
                 },
@@ -668,7 +670,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.security.encryption.encrypt_password")
     @patch("keyring.set_password")
     def test_set_password_remove_file_with_rich_console(
@@ -680,7 +682,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             f.write("testpassword\n")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "imap": {
                     "user": "test@example.com",
                 },
@@ -720,7 +722,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.security.encryption.encrypt_password")
     @patch("keyring.set_password")
     @patch("builtins.open", create=True)
@@ -728,7 +730,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         self, mock_open, mock_set_password, mock_encrypt, mock_load_config
     ):
         """Test set_password mode with remove file error and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "user": "test@example.com",
             },
@@ -774,13 +776,13 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         # Check that warning was printed
                         mock_ui.warn.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.config.create_default_config")
     def test_create_config_example_not_found_with_rich_console(
         self, mock_create_config, mock_load_config
     ):
         """Test create_config with example not found and rich console."""
-        mock_load_config.return_value = {}
+        mock_load_config.load.return_value = {}
         mock_console = MagicMock()
         mock_create_config.return_value = 1
 
@@ -798,11 +800,11 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     result = main()
                     self.assertEqual(result, 1)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.config.create_default_config")
     def test_create_config_success_with_rich_console(self, mock_create_config, mock_load_config):
         """Test create_config success with rich console."""
-        mock_load_config.return_value = {}
+        mock_load_config.load.return_value = {}
         mock_console = MagicMock()
         mock_create_config.return_value = 0
 
@@ -820,7 +822,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     result = main()
                     self.assertEqual(result, 0)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -828,7 +830,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         self, mock_storage_class, mock_sender_class, mock_get_password, mock_load_config
     ):
         """Test SMTP send file not found with rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -865,7 +867,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -874,7 +876,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
     ):
         """Test SMTP send when path is not a file with rich console."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -904,7 +906,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         self.assertEqual(result, 1)
                         mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -922,7 +924,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             test_file = f.name
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -961,7 +963,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -979,7 +981,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             test_file = f.name
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -1018,7 +1020,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1030,7 +1032,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             test_file = f.name
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -1080,7 +1082,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -1098,7 +1100,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             test_file = f.name
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -1137,7 +1139,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1145,7 +1147,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         self, mock_storage_class, mock_sender_class, mock_get_password, mock_load_config
     ):
         """Test SMTP send folder not found with rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1182,7 +1184,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1194,7 +1196,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             test_file = f.name
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -1233,7 +1235,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -1253,7 +1255,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             test_file2 = Path(temp_dir) / "file2.txt"
             test_file2.write_text("content2")
 
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -1295,7 +1297,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         else:
                             mock_ui.info.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
@@ -1315,7 +1317,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             test_file2 = Path(temp_dir) / "file2.txt"
             test_file2.write_text("content2")
 
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "smtp": {
                     "server": "smtp.example.com",
                     "port": 587,
@@ -1352,16 +1354,17 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         result = main()
                         self.assertEqual(result, 1)
                         # Should show results with failures
+                        # When has_rich is True, print() is called multiple times
                         if mock_ui.has_rich:
-                            mock_ui.print.assert_called()
+                            self.assertTrue(mock_ui.print.called)
                         else:
-                            mock_ui.info.assert_called()
+                            self.assertTrue(mock_ui.info.called)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_smtp_send_missing_config_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with missing SMTP config and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "imap": {
                 "user": "test@example.com",
             },
@@ -1386,11 +1389,11 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_smtp_send_missing_server_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with missing server and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "port": 587,
                 "user": "test@example.com",
@@ -1417,11 +1420,11 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_smtp_send_missing_user_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with missing user and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1448,13 +1451,13 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_smtp_send_missing_from_address_with_rich_console(
         self, mock_get_password, mock_load_config
     ):
         """Test SMTP send with missing from_address and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1481,13 +1484,13 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_smtp_send_missing_recipient_with_rich_console(
         self, mock_get_password, mock_load_config
     ):
         """Test SMTP send with missing recipient and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1516,11 +1519,11 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
     def test_smtp_send_password_error_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with password error and rich console."""
-        mock_load_config.return_value = {
+        mock_load_config.load.return_value = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
@@ -1550,11 +1553,11 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 1)
                     mock_ui.error.assert_called()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.config.create_default_config")
     def test_create_config_os_error_with_rich_console(self, mock_create_config, mock_load_config):
         """Test create_config with OSError and rich console."""
-        mock_load_config.return_value = {}
+        mock_load_config.load.return_value = {}
         mock_console = MagicMock()
         mock_create_config.return_value = 1
 
@@ -1669,7 +1672,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             self.assertEqual(result, 1)
             mock_error.assert_called_once()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.security.encryption.encrypt_password")
     @patch("keyring.set_password")
     def test_set_password_file_permission_error_with_rich_console(
@@ -1681,7 +1684,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             f.write("testpassword\n")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "imap": {
                     "user": "test@example.com",
                 },
@@ -1718,7 +1721,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.security.encryption.encrypt_password")
     @patch("keyring.set_password")
     def test_set_password_file_read_error_with_rich_console(
@@ -1730,7 +1733,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             f.write("testpassword\n")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "imap": {
                     "user": "test@example.com",
                 },
@@ -1767,7 +1770,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         finally:
             Path(test_file).unlink(missing_ok=True)
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.security.encryption.encrypt_password")
     @patch("keyring.set_password")
     def test_set_password_file_empty_with_rich_console(
@@ -1779,7 +1782,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             f.write("")
 
         try:
-            mock_load_config.return_value = {
+            mock_load_config.load.return_value = {
                 "imap": {
                     "user": "test@example.com",
                 },

@@ -31,9 +31,13 @@ EmailProcessor = Fetcher
 
 # Legacy function wrapper for backward compatibility
 def download_attachments(config, dry_run=False):
-    """Legacy function wrapper for backward compatibility."""
+    """Legacy function wrapper for backward compatibility.
+
+    Returns:
+        ProcessingResult from processor.process()
+    """
     processor = Fetcher(config)
-    processor.process(dry_run=dry_run)
+    return processor.process(dry_run=dry_run)
 
 
 __all__ = [

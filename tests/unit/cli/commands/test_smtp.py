@@ -236,7 +236,8 @@ class TestSMTPSend(unittest.TestCase):
                 # In dry-run mode, send_file is called but with dry_run=True
                 mock_sender.send_file.assert_called_once()
                 mock_storage.mark_as_sent.assert_not_called()
-                mock_ui.print.assert_called()
+                # When has_rich is False, dry-run uses info() instead of print()
+                mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
@@ -343,7 +344,8 @@ class TestSMTPSend(unittest.TestCase):
                 )
                 self.assertEqual(mock_sender.send_file.call_count, 2)
                 self.assertEqual(mock_storage.mark_as_sent.call_count, 2)
-                mock_ui.print.assert_called()
+                # When has_rich is False, uses info() instead of print()
+                mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
@@ -407,7 +409,8 @@ class TestSMTPSend(unittest.TestCase):
                     f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
                 )
                 self.assertEqual(mock_sender.send_file.call_count, 2)
-                mock_ui.print.assert_called()
+                # When has_rich is False, uses info() instead of print()
+                mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
@@ -468,7 +471,8 @@ class TestSMTPSend(unittest.TestCase):
                     f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
                 )
                 mock_sender.send_file.assert_not_called()
-                mock_ui.print.assert_called()
+                # When has_rich is False, uses info() instead of print()
+                mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
@@ -736,7 +740,8 @@ class TestSMTPSend(unittest.TestCase):
                     f"Expected 0 but got {result}. UI error calls: {mock_ui.error.call_args_list}",
                 )  # Success
                 # Check that skipped message was printed
-                mock_ui.print.assert_called()
+                # When has_rich is False, uses info() instead of print()
+                mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.imap.auth.get_imap_password")
