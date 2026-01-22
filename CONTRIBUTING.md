@@ -58,20 +58,22 @@ MyPy is configured via `.mypy.ini` and `pyproject.toml`.
 mypy email_processor
 ```
 
-### 3. Pre-commit Hooks (Optional)
+### 3. Pre-commit Hooks (Required)
 
-Pre-commit hooks automatically run code quality checks before each commit.
+Pre-commit hooks automatically run code quality checks before each commit. **It is required to run pre-commit checks before committing and pushing.**
 
 ```bash
 # Install pre-commit
 pip install pre-commit
 
-# Install git hooks
+# Install git hooks (optional - hooks will run automatically on commit)
 pre-commit install
 
-# Run hooks manually
+# Run hooks manually (REQUIRED before commit and push)
 pre-commit run --all-files
 ```
+
+**Note:** Even if hooks are installed, always run `pre-commit run --all-files` manually before committing to ensure all checks pass.
 
 ### 4. Running Tests
 
