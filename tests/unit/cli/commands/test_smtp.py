@@ -598,9 +598,9 @@ class TestSMTPSend(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui.has_rich = False
                     mock_ui_class.return_value = mock_ui
-                    with patch("email_processor.smtp.smtp_connect") as mock_smtp_connect:
+                    with patch("email_processor.smtp.smtp_connect") as mock_smtp_connect_patch:
                         mock_smtp = MagicMock()
-                        mock_smtp_connect.return_value = mock_smtp
+                        mock_smtp_connect_patch.return_value = mock_smtp
                     result = main()
                     self.assertEqual(result, 1)  # Failed because one file failed
                     # Check that messages were printed via UI (info or print)

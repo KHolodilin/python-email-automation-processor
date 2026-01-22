@@ -52,7 +52,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_basic(self, mock_import):
         """Test _display_results_rich with basic results."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -67,7 +67,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_errors(self, mock_import):
         """Test _display_results_rich with errors."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        _mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -80,7 +80,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_file_stats(self, mock_import):
         """Test _display_results_rich with file statistics."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -99,7 +99,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_metrics_short_time(self, mock_import):
         """Test _display_results_rich with metrics showing milliseconds."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -114,7 +114,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_metrics_seconds(self, mock_import):
         """Test _display_results_rich with metrics showing seconds."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -129,7 +129,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_metrics_long_time(self, mock_import):
         """Test _display_results_rich with metrics showing minutes."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -144,7 +144,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_per_email_time(self, mock_import):
         """Test _display_results_rich with per email time metrics."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -159,7 +159,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_imap_operations(self, mock_import):
         """Test _display_results_rich with IMAP operations metrics."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -176,7 +176,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_downloaded_size_kb(self, mock_import):
         """Test _display_results_rich with downloaded size in KB."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -191,7 +191,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_downloaded_size_mb(self, mock_import):
         """Test _display_results_rich with downloaded size in MB."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -206,7 +206,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_with_memory_usage(self, mock_import):
         """Test _display_results_rich with memory usage metrics."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -225,7 +225,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_without_metrics(self, mock_import):
         """Test _display_results_rich without metrics."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )
@@ -240,7 +240,7 @@ class TestDisplayResults(unittest.TestCase):
     @patch("builtins.__import__")
     def test_display_results_rich_metrics_without_total_time(self, mock_import):
         """Test _display_results_rich with metrics but no total_time."""
-        mock_table_class, mock_table_instance, mock_rich_table = self._mock_rich_table()
+        mock_table_class, _mock_table_instance, mock_rich_table = self._mock_rich_table()
         mock_import.side_effect = lambda name, *args, **kwargs: (
             mock_rich_table if name == "rich.table" else __import__(name, *args, **kwargs)
         )

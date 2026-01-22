@@ -361,9 +361,7 @@ class TestSentFilesStorage(unittest.TestCase):
 
         # Make validate_path return False for this specific path
         def validate_path_side_effect(root_path, file_path):
-            if str(file_path) == str(old_path):
-                return False
-            return True
+            return str(file_path) != str(old_path)
 
         mock_validate_path.side_effect = validate_path_side_effect
 
