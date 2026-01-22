@@ -31,7 +31,7 @@ def _validate_email(email_str: str) -> bool:
     if not email_str:
         return False
     # Use email.utils.parseaddr to validate
-    name, addr = parseaddr(email_str)
+    _name, addr = parseaddr(email_str)
     # Basic email regex check
     email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(email_pattern, addr)) if addr else False
