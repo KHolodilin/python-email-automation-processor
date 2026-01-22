@@ -319,13 +319,17 @@ class TestPasswordFileErrors(unittest.TestCase):
 
         try:
             # Create a fully mocked Path object
-            mock_path = MagicMock()
+            mock_path = MagicMock(spec=Path)
             mock_path.exists.return_value = True
             # Mock the stat() call to return a file with open permissions
             mock_stat_result = MagicMock()
             # Set st_mode to have group and other read permissions
+            # This ensures the condition file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH) is True
             mock_stat_result.st_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
             mock_path.stat.return_value = mock_stat_result
+            # Make sure mock_path behaves like a Path object
+            mock_path.__str__ = MagicMock(return_value=password_file)
+            mock_path.__fspath__ = MagicMock(return_value=password_file)
 
             # Mock platform to be Linux so permission check runs
             with patch("email_processor.cli.commands.passwords.sys.platform", "linux"):
@@ -352,20 +356,18 @@ class TestPasswordFileErrors(unittest.TestCase):
                             return_value="encrypted",
                         ):
                             # Patch Path constructor to return our mocked path
-                            # Path is used as Path(password_file), so we need to patch it as a class
-                            # Create a mock class that returns mock_path when called with password_file
-                            class MockPathClass:
-                                def __new__(cls, path_str):
-                                    if str(path_str) == password_file:
-                                        return mock_path
-                                    # For other paths, use real Path
-                                    from pathlib import Path as RealPath
+                            # Path is used as Path(password_file), so we need to patch it as a callable
+                            def mock_path_factory(*args, **kwargs):
+                                if args and str(args[0]) == password_file:
+                                    return mock_path
+                                # For other paths, use real Path
+                                from pathlib import Path as RealPath
 
-                                    return RealPath(path_str)
+                                return RealPath(*args, **kwargs)
 
                             with patch(
                                 "email_processor.cli.commands.passwords.Path",
-                                new=MockPathClass,
+                                new=mock_path_factory,
                             ):
                                 # Also patch stat.filemode to ensure it's called
                                 with patch(
@@ -434,13 +436,17 @@ class TestPasswordFileErrors(unittest.TestCase):
 
         try:
             # Create a fully mocked Path object
-            mock_path = MagicMock()
+            mock_path = MagicMock(spec=Path)
             mock_path.exists.return_value = True
             # Mock the stat() call to return a file with open permissions
             mock_stat_result = MagicMock()
             # Set st_mode to have group and other read permissions
+            # This ensures the condition file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH) is True
             mock_stat_result.st_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
             mock_path.stat.return_value = mock_stat_result
+            # Make sure mock_path behaves like a Path object
+            mock_path.__str__ = MagicMock(return_value=password_file)
+            mock_path.__fspath__ = MagicMock(return_value=password_file)
 
             # Mock platform to be Linux so permission check runs
             with (
@@ -472,20 +478,17 @@ class TestPasswordFileErrors(unittest.TestCase):
                         ),
                     ):
                         # Patch Path constructor to return our mocked path
-                        # Path is used as Path(password_file), so we need to patch it as a class
-                        # Create a mock class that returns mock_path when called with password_file
-                        class MockPathClass:
-                            def __new__(cls, path_str):
-                                if str(path_str) == password_file:
-                                    return mock_path
-                                # For other paths, use real Path
-                                from pathlib import Path as RealPath
+                        # Path is used as Path(password_file), so we need to patch it as a callable
+                        from pathlib import Path as RealPath
 
-                                return RealPath(path_str)
+                        def path_factory(*args, **kwargs):
+                            if args and str(args[0]) == password_file:
+                                return mock_path
+                            return RealPath(*args, **kwargs)
 
                         with patch(
                             "email_processor.cli.commands.passwords.Path",
-                            new=MockPathClass,
+                            new=path_factory,
                         ):
                             # Also patch stat.filemode to ensure it's called
                             with patch(
