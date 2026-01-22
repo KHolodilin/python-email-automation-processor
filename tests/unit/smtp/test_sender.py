@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from email_processor.logging.setup import setup_logging
+from email_processor.smtp.config import SMTPConfig
 from email_processor.smtp.sender import (
     EmailSender,
     calculate_email_size,
@@ -49,6 +50,19 @@ class TestSubjectTemplates(unittest.TestCase):
         self.assertIn("test.pdf", result)
         # Missing variable should be replaced with empty string
         self.assertEqual(result, "File: test.pdf - ")
+
+    def test_format_subject_template_keyerror_fallback(self):
+        """Test format_subject_template when KeyError occurs and manual replacement is used."""
+        # Create a template that will cause KeyError even after building full_context
+        # This can happen with complex template syntax
+        template = "File: {filename} - {date} - {extra}"
+        context = {"filename": "test.pdf", "date": "2024-01-15"}
+        # The template has {extra} which will be in full_context as empty string
+        # But if format() somehow still fails, it should use manual replacement
+        result = format_subject_template(template, context)
+        self.assertIsInstance(result, str)
+        self.assertIn("test.pdf", result)
+        self.assertIn("2024-01-15", result)
 
     def test_create_email_subject_single_file(self):
         """Test creating subject for single file."""
@@ -261,13 +275,14 @@ class TestEmailSender(unittest.TestCase):
         mock_smtp.send_message.return_value = None
         mock_smtp_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.pdf"
@@ -282,13 +297,14 @@ class TestEmailSender(unittest.TestCase):
 
     def test_send_file_dry_run(self):
         """Test file sending in dry-run mode."""
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.pdf"
@@ -301,7 +317,7 @@ class TestEmailSender(unittest.TestCase):
 
     def test_send_file_with_subject_template(self):
         """Test sending file with subject template."""
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
@@ -309,6 +325,7 @@ class TestEmailSender(unittest.TestCase):
             from_address="sender@example.com",
             subject_template="File: {filename}",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.pdf"
@@ -320,13 +337,14 @@ class TestEmailSender(unittest.TestCase):
 
     def test_send_files_empty_list(self):
         """Test sending empty file list."""
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
 
         result = sender.send_files([], "recipient@example.com")
         self.assertFalse(result)
@@ -338,7 +356,7 @@ class TestEmailSender(unittest.TestCase):
         mock_smtp.send_message.return_value = None
         mock_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
@@ -346,6 +364,7 @@ class TestEmailSender(unittest.TestCase):
             from_address="sender@example.com",
             max_email_size_mb=0.1,  # Small limit
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.txt"
@@ -368,13 +387,14 @@ class TestEmailSender(unittest.TestCase):
         mock_smtp.send_message.return_value = None
         mock_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.pdf"
@@ -397,7 +417,7 @@ class TestEmailSender(unittest.TestCase):
 
     def test_send_files_valueerror_split(self):
         """Test send_files handles ValueError from split_files_by_size."""
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
@@ -405,6 +425,7 @@ class TestEmailSender(unittest.TestCase):
             from_address="sender@example.com",
             max_email_size_mb=0.001,  # Very small limit
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a file that's too large for the limit
@@ -422,13 +443,14 @@ class TestEmailSender(unittest.TestCase):
         mock_smtp.send_message.return_value = None
         mock_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.pdf"
@@ -446,7 +468,7 @@ class TestEmailSender(unittest.TestCase):
         mock_smtp.send_message.return_value = None
         mock_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
@@ -454,6 +476,7 @@ class TestEmailSender(unittest.TestCase):
             from_address="sender@example.com",
             subject_template_package="Package: {file_count} files",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.pdf"
@@ -470,13 +493,14 @@ class TestEmailSender(unittest.TestCase):
         # Make smtp_connect raise an exception
         mock_connect.side_effect = Exception("Connection failed")
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.pdf"

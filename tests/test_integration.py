@@ -348,7 +348,7 @@ class TestDownloadAttachments(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.imap.fetcher.get_imap_password")
     @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
     def test_download_attachments_success(self, mock_imap_class, mock_get_password):
         """Test successful attachment download."""
@@ -375,7 +375,7 @@ class TestDownloadAttachments(unittest.TestCase):
         content = processed_file.read_text()
         self.assertIn("100", content, "UID 100 should be in processed file")
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.imap.fetcher.get_imap_password")
     @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
     def test_download_attachments_filter_sender(self, mock_imap_class, mock_get_password):
         """Test that non-allowed senders are filtered."""
@@ -408,7 +408,7 @@ class TestDownloadAttachments(unittest.TestCase):
             # Folder might not exist if no messages were processed
             pass
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.imap.fetcher.get_imap_password")
     @patch("email_processor.imap.client.imaplib.IMAP4_SSL")
     def test_download_attachments_already_processed(self, mock_imap_class, mock_get_password):
         """Test that already processed messages are skipped."""

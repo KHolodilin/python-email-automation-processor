@@ -39,10 +39,10 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/vkholodilin/python-email-automation-processor"
-"Bug Reports" = "https://github.com/vkholodilin/python-email-automation-processor/issues"
-"Source" = "https://github.com/vkholodilin/python-email-automation-processor"
-"Documentation" = "https://github.com/vkholodilin/python-email-automation-processor#readme"
+"Homepage" = "https://github.com/KHolodilin/python-email-automation-processor"
+"Bug Reports" = "https://github.com/KHolodilin/python-email-automation-processor/issues"
+"Source" = "https://github.com/KHolodilin/python-email-automation-processor"
+"Documentation" = "https://github.com/KHolodilin/python-email-automation-processor#readme"
 
 [project.optional-dependencies]
 dev = [

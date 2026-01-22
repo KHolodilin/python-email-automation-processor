@@ -4,7 +4,10 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-from email_processor.processor.email_processor import EmailProcessor, ProcessingMetrics
+from email_processor.imap.fetcher import Fetcher, ProcessingMetrics
+
+# Backward compatibility alias
+EmailProcessor = Fetcher
 
 
 class TestPerformanceBenchmarks(unittest.TestCase):
@@ -44,11 +47,9 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("OK", [b"1 2 3"])
 
-        with patch(
-            "email_processor.processor.email_processor.imap_connect", return_value=mock_mail
-        ):
+        with patch("email_processor.imap.fetcher.imap_connect", return_value=mock_mail):
             with patch(
-                "email_processor.processor.email_processor.get_imap_password",
+                "email_processor.imap.fetcher.get_imap_password",
                 return_value="password",
             ):
                 result = processor.process(dry_run=True, mock_mode=False)
@@ -67,11 +68,9 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("OK", [b"1 2 3 4 5"])
 
-        with patch(
-            "email_processor.processor.email_processor.imap_connect", return_value=mock_mail
-        ):
+        with patch("email_processor.imap.fetcher.imap_connect", return_value=mock_mail):
             with patch(
-                "email_processor.processor.email_processor.get_imap_password",
+                "email_processor.imap.fetcher.get_imap_password",
                 return_value="password",
             ):
                 # Mock fetch operations to return quickly
@@ -108,11 +107,9 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("OK", [b"1 2"])
 
-        with patch(
-            "email_processor.processor.email_processor.imap_connect", return_value=mock_mail
-        ):
+        with patch("email_processor.imap.fetcher.imap_connect", return_value=mock_mail):
             with patch(
-                "email_processor.processor.email_processor.get_imap_password",
+                "email_processor.imap.fetcher.get_imap_password",
                 return_value="password",
             ):
                 result = processor.process(dry_run=True, mock_mode=False)
@@ -134,11 +131,9 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         mock_mail.select.return_value = ("OK", [b"1"])
         mock_mail.search.return_value = ("OK", [b"1"])
 
-        with patch(
-            "email_processor.processor.email_processor.imap_connect", return_value=mock_mail
-        ):
+        with patch("email_processor.imap.fetcher.imap_connect", return_value=mock_mail):
             with patch(
-                "email_processor.processor.email_processor.get_imap_password",
+                "email_processor.imap.fetcher.get_imap_password",
                 return_value="password",
             ):
                 result = processor.process(dry_run=True, mock_mode=False)
@@ -181,11 +176,9 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         mock_mail.fetch.side_effect = fetch_responses
 
         start_time = time.time()
-        with patch(
-            "email_processor.processor.email_processor.imap_connect", return_value=mock_mail
-        ):
+        with patch("email_processor.imap.fetcher.imap_connect", return_value=mock_mail):
             with patch(
-                "email_processor.processor.email_processor.get_imap_password",
+                "email_processor.imap.fetcher.get_imap_password",
                 return_value="password",
             ):
                 result = processor.process(dry_run=True, mock_mode=False)
@@ -220,15 +213,13 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         mock_part.get_payload.return_value = b"x" * 1024  # 1KB file
         mock_email.walk.return_value = [mock_part]
 
-        with patch(
-            "email_processor.processor.email_processor.imap_connect", return_value=mock_mail
-        ):
+        with patch("email_processor.imap.fetcher.imap_connect", return_value=mock_mail):
             with patch(
-                "email_processor.processor.email_processor.get_imap_password",
+                "email_processor.imap.fetcher.get_imap_password",
                 return_value="password",
             ):
                 with patch(
-                    "email_processor.processor.email_processor.message_from_bytes",
+                    "email_processor.imap.fetcher.message_from_bytes",
                     return_value=mock_email,
                 ):
                     result = processor.process(dry_run=False, mock_mode=False)
@@ -250,7 +241,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
 
     def test_processing_result_with_metrics(self):
         """Benchmark: Test ProcessingResult includes metrics."""
-        from email_processor.processor.email_processor import ProcessingResult
+        from email_processor.imap.fetcher import ProcessingResult
 
         metrics = ProcessingMetrics()
         metrics.total_time = 1.5

@@ -83,7 +83,13 @@ pytest
 pytest --cov=email_processor --cov-report=html
 
 # Run specific test file
-pytest tests/unit/processor/test_email_processor.py
+pytest tests/unit/imap/test_fetcher_header.py
+
+# Run all fetcher tests
+pytest tests/unit/imap/test_fetcher_*.py
+
+# Run specific test category
+pytest tests/unit/imap/test_fetcher_attachment.py
 ```
 
 ### 5. Code Quality Workflow

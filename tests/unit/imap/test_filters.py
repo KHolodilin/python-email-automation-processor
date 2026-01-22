@@ -2,8 +2,8 @@
 
 import unittest
 
+from email_processor.imap.filters import EmailFilter
 from email_processor.logging.setup import setup_logging
-from email_processor.processor.filters import EmailFilter
 
 
 class TestEmailFilter(unittest.TestCase):

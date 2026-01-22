@@ -514,7 +514,7 @@ pip install ruff mypy types-PyYAML
 
 The project uses [Codecov](https://codecov.io) for test coverage tracking and reporting. Coverage reports are automatically generated during CI runs and uploaded to Codecov.
 
-- **View coverage reports**: [Codecov Dashboard](https://codecov.io/gh/vkholodilin/python-email-automation-processor)
+- **View coverage reports**: [Codecov Dashboard](https://codecov.io/gh/KHolodilin/python-email-automation-processor)
 - **Run tests with coverage locally**:
   ```bash
   pytest --cov=email_processor --cov-report=term-missing --cov-report=html

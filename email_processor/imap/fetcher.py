@@ -1,4 +1,4 @@
-"""Main email processor class."""
+"""IMAP email fetcher class."""
 
 import email
 import imaplib
@@ -54,12 +54,12 @@ except ImportError:
 
 from email_processor.config.constants import MAX_ATTACHMENT_SIZE
 from email_processor.imap.archive import archive_message
+from email_processor.imap.attachments import AttachmentHandler
 from email_processor.imap.auth import get_imap_password
 from email_processor.imap.client import imap_connect
+from email_processor.imap.filters import EmailFilter
 from email_processor.imap.mock_client import MockIMAP4_SSL
 from email_processor.logging.setup import get_logger, setup_logging
-from email_processor.processor.attachments import AttachmentHandler
-from email_processor.processor.filters import EmailFilter
 from email_processor.storage.uid_storage import (
     UIDStorage,
     cleanup_old_processed_days,
@@ -101,12 +101,12 @@ class ProcessingResult:
     metrics: ProcessingMetrics = field(default_factory=ProcessingMetrics)
 
 
-class EmailProcessor:
-    """Main email processor class."""
+class Fetcher:
+    """IMAP email fetcher class."""
 
     def __init__(self, config: dict[str, Any]):
         """
-        Initialize email processor.
+        Initialize email fetcher.
 
         Args:
             config: Configuration dictionary with IMAP and processing settings
