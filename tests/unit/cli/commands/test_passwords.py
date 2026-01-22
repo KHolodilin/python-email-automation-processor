@@ -423,20 +423,24 @@ class TestPasswordFileErrors(unittest.TestCase):
                     mock_ui.has_rich = True
                     mock_ui.console = mock_console
                     mock_ui_class.return_value = mock_ui
-                    with patch(
-                        "sys.argv",
-                        [
-                            "email_processor",
-                            "password",
-                            "set",
-                            "--user",
-                            "test@example.com",
-                            "--password-file",
-                            password_file,
-                        ],
-                    ), patch("keyring.set_password"), patch(
-                        "email_processor.cli.commands.passwords.encrypt_password",
-                        return_value="encrypted",
+                    with (
+                        patch(
+                            "sys.argv",
+                            [
+                                "email_processor",
+                                "password",
+                                "set",
+                                "--user",
+                                "test@example.com",
+                                "--password-file",
+                                password_file,
+                            ],
+                        ),
+                        patch("keyring.set_password"),
+                        patch(
+                            "email_processor.cli.commands.passwords.encrypt_password",
+                            return_value="encrypted",
+                        ),
                     ):
                         # Patch Path constructor to return our mocked path
                         def mock_path_constructor(path_str):
