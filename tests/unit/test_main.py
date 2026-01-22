@@ -142,7 +142,11 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "--config", "custom_config.yaml"]):
             result = main()
             self.assertEqual(result, 0)
-            mock_load_config.assert_called_once_with("custom_config.yaml")
+            # ConfigLoader.load is called with ui parameter
+            mock_load_config.assert_called_once()
+            call_args = mock_load_config.call_args
+            self.assertEqual(call_args[0][0], "custom_config.yaml")
+            self.assertIn("ui", call_args[1])
             mock_processor.process.assert_called_once_with(
                 dry_run=False, mock_mode=False, config_path="custom_config.yaml"
             )

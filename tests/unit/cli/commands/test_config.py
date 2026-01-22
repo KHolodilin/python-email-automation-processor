@@ -70,8 +70,8 @@ class TestValidateConfigFile(unittest.TestCase):
         with patch.object(ui, "success") as mock_success:
             result = validate_config_file("config.yaml", ui)
             self.assertEqual(result, 0)
-            mock_load.assert_called_once_with("config.yaml")
-            mock_validate.assert_called_once()
+            mock_load.assert_called_once_with("config.yaml", ui=ui)
+            mock_validate.assert_called_once_with({"imap": {"server": "imap.example.com"}}, ui=ui)
             mock_success.assert_called_once()
 
     @patch("email_processor.cli.commands.config.ConfigLoader.load")
@@ -96,6 +96,8 @@ class TestValidateConfigFile(unittest.TestCase):
         with patch.object(ui, "error") as mock_error:
             result = validate_config_file("config.yaml", ui)
             self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+            mock_load.assert_called_once_with("config.yaml", ui=ui)
+            mock_validate.assert_called_once_with({"imap": {}}, ui=ui)
             mock_error.assert_called_once()
 
     @patch("email_processor.cli.commands.config.ConfigLoader.load")
