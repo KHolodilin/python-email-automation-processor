@@ -352,46 +352,57 @@ class TestPasswordFileErrors(unittest.TestCase):
                             return_value="encrypted",
                         ):
                             # Patch Path constructor to return our mocked path
-                            def mock_path_constructor(path_str):
-                                if str(path_str) == password_file:
-                                    return mock_path
-                                return Path(path_str)
+                            # Path is used as Path(password_file), so we need to patch it as a class
+                            # Create a mock class that returns mock_path when called with password_file
+                            class MockPathClass:
+                                def __new__(cls, path_str):
+                                    if str(path_str) == password_file:
+                                        return mock_path
+                                    # For other paths, use real Path
+                                    from pathlib import Path as RealPath
+
+                                    return RealPath(path_str)
 
                             with patch(
                                 "email_processor.cli.commands.passwords.Path",
-                                side_effect=mock_path_constructor,
+                                new=MockPathClass,
                             ):
-                                with patch("builtins.open", create=True) as mock_open:
-                                    mock_file = MagicMock()
-                                    mock_file.readline.return_value = "test_password\n"
-                                    mock_open.return_value.__enter__.return_value = mock_file
-                                    result = main()
-                                    self.assertEqual(result, 0)
-                                    # Check that warning was printed
-                                    # Warning message contains "permissions" or "open permissions"
-                                    warning_calls = [
-                                        call
-                                        for call in mock_ui.warn.call_args_list
-                                        if "permissions" in str(call).lower()
-                                        or "warning" in str(call).lower()
-                                    ]
-                                    # If no warning calls found, check if warn was called at all
-                                    if len(warning_calls) == 0 and mock_ui.warn.called:
-                                        # Get all warn calls to debug
-                                        all_warn_calls = [
-                                            str(call) for call in mock_ui.warn.call_args_list
-                                        ]
-                                        # Check if any call contains permission-related text
+                                # Also patch stat.filemode to ensure it's called
+                                with patch(
+                                    "email_processor.cli.commands.passwords.stat.filemode",
+                                    return_value="-rw-r--r--",
+                                ):
+                                    with patch("builtins.open", create=True) as mock_open:
+                                        mock_file = MagicMock()
+                                        mock_file.readline.return_value = "test_password\n"
+                                        mock_open.return_value.__enter__.return_value = mock_file
+                                        result = main()
+                                        self.assertEqual(result, 0)
+                                        # Check that warning was printed
+                                        # Warning message contains "permissions" or "open permissions"
                                         warning_calls = [
                                             call
-                                            for call in all_warn_calls
-                                            if "permission" in call.lower()
+                                            for call in mock_ui.warn.call_args_list
+                                            if "permissions" in str(call).lower()
+                                            or "warning" in str(call).lower()
                                         ]
-                                    self.assertGreater(
-                                        len(warning_calls),
-                                        0,
-                                        f"No permission warning found. Warn calls: {mock_ui.warn.call_args_list}",
-                                    )
+                                        # If no warning calls found, check if warn was called at all
+                                        if len(warning_calls) == 0 and mock_ui.warn.called:
+                                            # Get all warn calls to debug
+                                            all_warn_calls = [
+                                                str(call) for call in mock_ui.warn.call_args_list
+                                            ]
+                                            # Check if any call contains permission-related text
+                                            warning_calls = [
+                                                call
+                                                for call in all_warn_calls
+                                                if "permission" in call.lower()
+                                            ]
+                                        self.assertGreater(
+                                            len(warning_calls),
+                                            0,
+                                            f"No permission warning found. Warn calls: {mock_ui.warn.call_args_list}",
+                                        )
         finally:
             Path(password_file).unlink(missing_ok=True)
 
@@ -461,36 +472,51 @@ class TestPasswordFileErrors(unittest.TestCase):
                         ),
                     ):
                         # Patch Path constructor to return our mocked path
-                        def mock_path_constructor(path_str):
-                            if str(path_str) == password_file:
-                                return mock_path
-                            return Path(path_str)
+                        # Path is used as Path(password_file), so we need to patch it as a class
+                        # Create a mock class that returns mock_path when called with password_file
+                        class MockPathClass:
+                            def __new__(cls, path_str):
+                                if str(path_str) == password_file:
+                                    return mock_path
+                                # For other paths, use real Path
+                                from pathlib import Path as RealPath
+
+                                return RealPath(path_str)
 
                         with patch(
                             "email_processor.cli.commands.passwords.Path",
-                            side_effect=mock_path_constructor,
+                            new=MockPathClass,
                         ):
-                            with patch("builtins.open", create=True) as mock_open:
-                                mock_file = MagicMock()
-                                mock_file.readline.return_value = "test_password\n"
-                                mock_open.return_value.__enter__.return_value = mock_file
-                                result = main()
-                                self.assertEqual(result, 0)
-                                # Check that warning was printed with rich console
-                                # Warning is printed via ui.warn(), which uses console.print() when rich is available
-                                warning_calls_ui = [
-                                    str(call)
-                                    for call in mock_ui.warn.call_args_list
-                                    if "permissions" in str(call) or "Warning" in str(call)
-                                ]
-                                warning_calls_console = [
-                                    str(call)
-                                    for call in mock_console.print.call_args_list
-                                    if "permissions" in str(call) or "Warning" in str(call)
-                                ]
-                                self.assertGreater(
-                                    len(warning_calls_ui) + len(warning_calls_console), 0
-                                )
+                            # Also patch stat.filemode to ensure it's called
+                            with patch(
+                                "email_processor.cli.commands.passwords.stat.filemode",
+                                return_value="-rw-r--r--",
+                            ):
+                                with patch("builtins.open", create=True) as mock_open:
+                                    mock_file = MagicMock()
+                                    mock_file.readline.return_value = "test_password\n"
+                                    mock_open.return_value.__enter__.return_value = mock_file
+                                    result = main()
+                                    self.assertEqual(result, 0)
+                                    # Check that warning was printed with rich console
+                                    # Warning is printed via ui.warn(), which uses console.print() when rich is available
+                                    warning_calls_ui = [
+                                        str(call)
+                                        for call in mock_ui.warn.call_args_list
+                                        if "permissions" in str(call).lower()
+                                        or "warning" in str(call).lower()
+                                    ]
+                                    warning_calls_console = [
+                                        str(call)
+                                        for call in mock_console.print.call_args_list
+                                        if "permissions" in str(call).lower()
+                                        or "warning" in str(call).lower()
+                                    ]
+                                    self.assertGreater(
+                                        len(warning_calls_ui) + len(warning_calls_console),
+                                        0,
+                                        f"No permission warning found. UI warn calls: {mock_ui.warn.call_args_list}, Console print calls: {mock_console.print.call_args_list}",
+                                    )
         finally:
             Path(password_file).unlink(missing_ok=True)
 
