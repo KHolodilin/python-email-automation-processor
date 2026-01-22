@@ -357,17 +357,19 @@ class TestPasswordFileErrors(unittest.TestCase):
                         ):
                             # Patch Path constructor to return our mocked path
                             # Path is used as Path(password_file), so we need to patch it as a callable
-                            def mock_path_factory(*args, **kwargs):
+                            from pathlib import Path as RealPath
+
+                            def path_factory(*args, **kwargs):
                                 if args and str(args[0]) == password_file:
                                     return mock_path
-                                # For other paths, use real Path
-                                from pathlib import Path as RealPath
-
                                 return RealPath(*args, **kwargs)
+
+                            # Use MagicMock with side_effect to make it callable
+                            mock_path_class = MagicMock(side_effect=path_factory)
 
                             with patch(
                                 "email_processor.cli.commands.passwords.Path",
-                                new=mock_path_factory,
+                                new=mock_path_class,
                             ):
                                 # Also patch stat.filemode to ensure it's called
                                 with patch(
@@ -380,6 +382,8 @@ class TestPasswordFileErrors(unittest.TestCase):
                                         mock_open.return_value.__enter__.return_value = mock_file
                                         result = main()
                                         self.assertEqual(result, 0)
+                                        # Verify that mock_path.stat() was called (permission check)
+                                        mock_path.stat.assert_called()
                                         # Check that warning was printed
                                         # Warning message contains "permissions" or "open permissions"
                                         warning_calls = [
@@ -403,7 +407,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                                         self.assertGreater(
                                             len(warning_calls),
                                             0,
-                                            f"No permission warning found. Warn calls: {mock_ui.warn.call_args_list}",
+                                            f"No permission warning found. Warn calls: {mock_ui.warn.call_args_list}, stat called: {mock_path.stat.called}",
                                         )
         finally:
             Path(password_file).unlink(missing_ok=True)
@@ -486,9 +490,12 @@ class TestPasswordFileErrors(unittest.TestCase):
                                 return mock_path
                             return RealPath(*args, **kwargs)
 
+                        # Use MagicMock with side_effect to make it callable
+                        mock_path_class = MagicMock(side_effect=path_factory)
+
                         with patch(
                             "email_processor.cli.commands.passwords.Path",
-                            new=path_factory,
+                            new=mock_path_class,
                         ):
                             # Also patch stat.filemode to ensure it's called
                             with patch(
@@ -501,6 +508,8 @@ class TestPasswordFileErrors(unittest.TestCase):
                                     mock_open.return_value.__enter__.return_value = mock_file
                                     result = main()
                                     self.assertEqual(result, 0)
+                                    # Verify that mock_path.stat() was called (permission check)
+                                    mock_path.stat.assert_called()
                                     # Check that warning was printed with rich console
                                     # Warning is printed via ui.warn(), which uses console.print() when rich is available
                                     warning_calls_ui = [
@@ -518,7 +527,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                                     self.assertGreater(
                                         len(warning_calls_ui) + len(warning_calls_console),
                                         0,
-                                        f"No permission warning found. UI warn calls: {mock_ui.warn.call_args_list}, Console print calls: {mock_console.print.call_args_list}",
+                                        f"No permission warning found. UI warn calls: {mock_ui.warn.call_args_list}, Console print calls: {mock_console.print.call_args_list}, stat called: {mock_path.stat.called}",
                                     )
         finally:
             Path(password_file).unlink(missing_ok=True)
