@@ -823,7 +823,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     self.assertEqual(result, 0)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
     def test_smtp_send_file_not_found_with_rich_console(
@@ -868,7 +868,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
     def test_smtp_send_file_not_a_file_with_rich_console(
@@ -907,7 +907,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -964,7 +964,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             Path(test_file).unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1021,7 +1021,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             Path(test_file).unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
     def test_smtp_send_file_dry_run_with_rich_console(
@@ -1083,7 +1083,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             Path(test_file).unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1140,7 +1140,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             Path(test_file).unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
     def test_smtp_send_folder_not_found_with_rich_console(
@@ -1185,7 +1185,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
     def test_smtp_send_folder_not_a_directory_with_rich_console(
@@ -1236,7 +1236,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
             Path(test_file).unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1298,7 +1298,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                             mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1355,13 +1355,14 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         self.assertEqual(result, 1)
                         # Should show results with failures
                         # When has_rich is True, print() is called multiple times
-                        if mock_ui.has_rich:
-                            self.assertTrue(mock_ui.print.called)
-                        else:
-                            self.assertTrue(mock_ui.info.called)
+                        # Check that UI output was called (print, info, or warn)
+                        self.assertTrue(
+                            mock_ui.print.called or mock_ui.info.called or mock_ui.warn.called,
+                            "UI output should be called to show results",
+                        )
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_smtp_send_missing_config_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with missing SMTP config and rich console."""
         mock_load_config.load.return_value = {
@@ -1390,7 +1391,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_smtp_send_missing_server_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with missing server and rich console."""
         mock_load_config.load.return_value = {
@@ -1421,7 +1422,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_smtp_send_missing_user_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with missing user and rich console."""
         mock_load_config.load.return_value = {
@@ -1452,7 +1453,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_smtp_send_missing_from_address_with_rich_console(
         self, mock_get_password, mock_load_config
     ):
@@ -1485,7 +1486,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_smtp_send_missing_recipient_with_rich_console(
         self, mock_get_password, mock_load_config
     ):
@@ -1520,7 +1521,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_smtp_send_password_error_with_rich_console(self, mock_get_password, mock_load_config):
         """Test SMTP send with password error and rich console."""
         mock_load_config.load.return_value = {

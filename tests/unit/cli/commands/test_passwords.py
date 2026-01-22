@@ -328,7 +328,7 @@ class TestPasswordFileErrors(unittest.TestCase):
             mock_path.stat.return_value = mock_stat_result
 
             # Mock platform to be Linux so permission check runs
-            with patch("email_processor.__main__.sys.platform", "linux"):
+            with patch("email_processor.cli.commands.passwords.sys.platform", "linux"):
                 with patch(
                     "sys.argv",
                     [
@@ -433,7 +433,7 @@ class TestPasswordFileErrors(unittest.TestCase):
 
             # Mock platform to be Linux so permission check runs
             with (
-                patch("email_processor.__main__.sys.platform", "linux"),
+                patch("email_processor.cli.commands.passwords.sys.platform", "linux"),
                 patch("email_processor.cli.ui.RICH_AVAILABLE", True),
             ):
                 with patch("email_processor.cli.ui.CLIUI") as mock_ui_class:

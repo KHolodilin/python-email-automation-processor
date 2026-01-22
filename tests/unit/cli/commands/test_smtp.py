@@ -30,7 +30,7 @@ class TestSMTPSend(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -84,7 +84,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_storage.mark_as_sent.assert_called_once()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -122,7 +122,7 @@ class TestSMTPSend(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -175,7 +175,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_sender.send_file.assert_not_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -240,7 +240,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -284,7 +284,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -348,7 +348,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -413,7 +413,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -475,7 +475,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -517,7 +517,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -559,7 +559,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -600,7 +600,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -676,7 +676,7 @@ class TestSMTPSend(unittest.TestCase):
             test_file4.unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -744,7 +744,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.info.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -820,7 +820,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_send_file_missing_recipient(self, mock_get_password, mock_load_config):
         """Test error when recipient is not specified."""
         mock_load_config.load.return_value = {
@@ -843,7 +843,7 @@ class TestSMTPSend(unittest.TestCase):
                 self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.storage.sent_files_storage.SentFilesStorage")
     def test_send_file_password_error(
         self, mock_storage_class, mock_get_password, mock_load_config
@@ -880,7 +880,7 @@ class TestSMTPSend(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -935,7 +935,7 @@ class TestSMTPSend(unittest.TestCase):
                 )
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1000,7 +1000,7 @@ class TestSMTPSend(unittest.TestCase):
                 )
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1047,7 +1047,7 @@ class TestSMTPSend(unittest.TestCase):
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1089,7 +1089,7 @@ class TestSMTPConfigErrors(unittest.TestCase):
     """Tests for SMTP configuration error handling."""
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_send_file_missing_smtp_server(self, mock_get_password, mock_load_config):
         """Test error when SMTP server is missing."""
         mock_load_config.load.return_value = {
@@ -1172,7 +1172,7 @@ class TestSMTPConfigErrors(unittest.TestCase):
             Path(test_file).unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_send_file_missing_from_address(self, mock_get_password, mock_load_config):
         """Test error when from_address is missing."""
         mock_load_config.load.return_value = {
@@ -1296,7 +1296,7 @@ class TestSMTPWarning(unittest.TestCase):
             Path(test_file).unlink(missing_ok=True)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
@@ -1381,7 +1381,7 @@ class TestSMTPWarning(unittest.TestCase):
         self.assertEqual(result, 1)
 
     @patch("email_processor.__main__.ConfigLoader")
-    @patch("email_processor.imap.auth.get_imap_password")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
     @patch("email_processor.smtp.smtp_connect")
     @patch("email_processor.cli.commands.smtp.EmailSender")
     @patch("email_processor.cli.commands.smtp.SentFilesStorage")
