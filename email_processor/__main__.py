@@ -48,7 +48,7 @@ def _load_config(config_path: str, ui: CLIUI) -> tuple[dict, int]:
         tuple: (config_dict, status_code) where status_code is 0 on success, 3 on config error
     """
     try:
-        cfg = ConfigLoader.load(config_path)
+        cfg = ConfigLoader.load(config_path, ui=ui)
         return cfg, EXIT_SUCCESS
     except FileNotFoundError as e:
         ui.error(str(e))

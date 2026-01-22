@@ -60,8 +60,8 @@ def validate_config_file(config_path: str, ui: CLIUI) -> int:
         int: 0 on success, 3 on validation error, 1 on other error
     """
     try:
-        cfg = ConfigLoader.load(config_path)
-        validate_config(cfg)
+        cfg = ConfigLoader.load(config_path, ui=ui)
+        validate_config(cfg, ui=ui)
         ui.success(f"Configuration file is valid: {config_path}")
         return 0
     except FileNotFoundError as e:

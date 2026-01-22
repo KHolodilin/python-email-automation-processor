@@ -34,7 +34,7 @@ def show_status(config_path: str, ui: CLIUI) -> int:
 
     # Try to load config for additional info
     try:
-        cfg = ConfigLoader.load(config_path)
+        cfg = ConfigLoader.load(config_path, ui=ui)
 
         # Storage directories
         proc_cfg = cfg.get("processing", {})
