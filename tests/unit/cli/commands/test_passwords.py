@@ -529,13 +529,28 @@ class TestPasswordFileErrors(unittest.TestCase):
                                     self.assertEqual(result, 0)
                                     # Verify that mock_path.stat() was called (permission check)
                                     mock_path.stat.assert_called()
+                                    # Get the actual stat result that was returned
+                                    actual_stat_result = mock_path.stat.return_value
                                     # Verify that stat.filemode() was called
                                     self.assertTrue(
                                         mock_filemode_patch.called,
                                         "stat.filemode() should be called",
                                     )
-                                    mock_filemode_patch.assert_called_once_with(
-                                        mock_stat_result.st_mode
+                                    # Verify it was called with the correct st_mode
+                                    self.assertEqual(
+                                        mock_filemode_patch.call_args[0][0],
+                                        actual_stat_result.st_mode,
+                                        f"stat.filemode() should be called with st_mode={actual_stat_result.st_mode}",
+                                    )
+                                    # Debug: Check if condition would be true
+                                    condition_result = actual_stat_result.st_mode & (
+                                        stat.S_IRGRP | stat.S_IROTH
+                                    )
+                                    self.assertTrue(
+                                        bool(condition_result),
+                                        f"Condition should be true: st_mode={actual_stat_result.st_mode} (oct: {oct(actual_stat_result.st_mode)}), "
+                                        f"IRGRP|IROTH={stat.S_IRGRP | stat.S_IROTH} (oct: {oct(stat.S_IRGRP | stat.S_IROTH)}), "
+                                        f"result={condition_result} (oct: {oct(condition_result) if condition_result else 0})",
                                     )
                                     # Check that warning was printed with rich console
                                     # Warning is printed via ui.warn(), which uses console.print() when rich is available
@@ -545,7 +560,9 @@ class TestPasswordFileErrors(unittest.TestCase):
                                         f"UI warn calls: {mock_ui.warn.call_args_list}, "
                                         f"Console print calls: {mock_console.print.call_args_list}, "
                                         f"stat called: {mock_path.stat.called}, "
-                                        f"filemode called: {mock_filemode_patch.called}",
+                                        f"filemode called: {mock_filemode_patch.called}, "
+                                        f"actual_stat_result.st_mode: {actual_stat_result.st_mode} (oct: {oct(actual_stat_result.st_mode)}), "
+                                        f"condition_result: {condition_result} (oct: {oct(condition_result) if condition_result else 0})",
                                     )
                                     # Check that the warning message contains "permissions"
                                     warn_calls_str = str(mock_ui.warn.call_args_list).lower()
