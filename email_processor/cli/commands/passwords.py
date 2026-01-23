@@ -136,7 +136,16 @@ def set_password(
         try:
             keyring.set_password(KEYRING_SERVICE_NAME, user, password)
             if config_path:
-                ui.warn(f"Password saved unencrypted (encryption failed: {e})")
+                # Check if it's an ImportError (cryptography not installed)
+                if isinstance(e, ImportError) and "cryptography" in str(e):
+                    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+                    ui.warn(
+                        f"Password saved unencrypted. "
+                        f"To enable encryption, install cryptography for Python {python_version}: "
+                        f"pip install cryptography>=40.0.0"
+                    )
+                else:
+                    ui.warn(f"Password saved unencrypted (encryption failed: {e})")
             ui.success(f"Password saved for {user}")
         except Exception as e2:
             ui.error(f"Failed to save password: {e2}")

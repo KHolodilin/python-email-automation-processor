@@ -316,3 +316,4 @@ htmlcov/
 /sent_files
 /send_folder
 /.email_password
+/.vscode/settings.json

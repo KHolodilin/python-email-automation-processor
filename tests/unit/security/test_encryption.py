@@ -173,18 +173,20 @@ class TestEncryption(unittest.TestCase):
 
     def test_get_fernet_import_error(self):
         """Test _get_fernet handles ImportError when cryptography is not available."""
+        import builtins
         from unittest.mock import patch
 
         from email_processor.security.encryption import _get_fernet
+
+        # Save the original __import__ before patching
+        original_import = builtins.__import__
 
         # Patch the import to raise ImportError
         def mock_import(name, *args, **kwargs):
             if name == "cryptography.fernet" or name.startswith("cryptography"):
                 raise ImportError("No module named 'cryptography'")
-            # For other imports, use the real import
-            import builtins
-
-            return builtins.__import__(name, *args, **kwargs)
+            # For other imports, use the original import (not the patched one)
+            return original_import(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=mock_import):
             with self.assertRaises(ImportError) as context:
