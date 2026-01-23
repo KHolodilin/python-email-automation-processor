@@ -352,20 +352,21 @@ class TestPasswordFileErrors(unittest.TestCase):
                         mock_ui = MagicMock()
                         mock_ui.has_rich = False
                         mock_ui_class.return_value = mock_ui
-                    # Remove old mock_print patches - use mock_ui instead
-                    with patch("keyring.set_password"):
-                        with patch(
-                            "email_processor.cli.commands.passwords.encrypt_password",
-                            return_value="encrypted",
-                        ):
-                            # Patch Path constructor to return our mocked path
-                            # Path is used as Path(password_file), so we need to patch it as a callable
-                            from pathlib import Path as RealPath
 
-                            def path_factory(*args, **kwargs):
-                                if args and str(args[0]) == password_file:
-                                    return mock_path
-                                return RealPath(*args, **kwargs)
+                        # Remove old mock_print patches - use mock_ui instead
+                        with patch("keyring.set_password"):
+                            with patch(
+                                "email_processor.cli.commands.passwords.encrypt_password",
+                                return_value="encrypted",
+                            ):
+                                # Patch Path constructor to return our mocked path
+                                # Path is used as Path(password_file), so we need to patch it as a callable
+                                from pathlib import Path as RealPath
+
+                                def path_factory(*args, **kwargs):
+                                    if args and str(args[0]) == password_file:
+                                        return mock_path
+                                    return RealPath(*args, **kwargs)
 
                             # Use MagicMock with side_effect to make it callable
                             mock_path_class = MagicMock(side_effect=path_factory)
@@ -477,8 +478,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                 patch("email_processor.cli.commands.passwords.sys.platform", "linux"),
                 patch("email_processor.cli.ui.RICH_AVAILABLE", True),
             ):
-                # Patch CLIUI where it's used in __main__.py
-                with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                with patch("email_processor.cli.ui.CLIUI") as mock_ui_class:
                     mock_ui = MagicMock()
                     mock_ui.has_rich = True
                     mock_ui.console = mock_console
