@@ -185,18 +185,18 @@ def test_my_function(self):
 
 ## Troubleshooting
 
-Если вы столкнулись с проблемами при запуске тестов, см. файл `TROUBLESHOOTING.md` для подробных объяснений и решений.
+If you encounter issues when running tests, see the `TROUBLESHOOTING.md` file for detailed explanations and solutions.
 
-### Частые проблемы:
+### Common Issues:
 
 1. **`file or directory not found: tests/test_unit.py`**
-   - Файл был удален при модуляризации
-   - Используйте: `pytest tests/unit/` вместо `pytest tests/test_unit.py`
+   - The file was removed during modularization
+   - Use: `pytest tests/unit/` instead of `pytest tests/test_unit.py`
 
-2. **Ошибки IMAP в логах при тестах**
-   - Это нормально для тестов, проверяющих обработку ошибок
-   - Используйте `pytest` вместо прямого запуска через `unittest.main()`
+2. **IMAP errors in logs during tests**
+   - This is normal for tests checking error handling
+   - Use `pytest` instead of running directly via `unittest.main()`
 
 3. **`pytest: reading from stdin while output is captured!`**
-   - Убедитесь, что `get_imap_password` правильно замокирован в тестах
-   - Используйте правильный путь для патча: `email_processor.imap.fetcher.get_imap_password`
+   - Make sure `get_imap_password` is properly mocked in tests
+   - Use the correct path for patching: `email_processor.imap.fetcher.get_imap_password`
