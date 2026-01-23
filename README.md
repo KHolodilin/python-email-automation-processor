@@ -692,15 +692,26 @@ The project uses a modular architecture for better maintainability:
 
 ```
 email_processor/
+├── cli/             # CLI commands and user interface
+│   ├── commands/    # CLI subcommands (config, imap, passwords, smtp, status)
+│   └── ui.py        # UI components and console output
 ├── config/          # Configuration loading and validation
-├── logging/         # Structured logging setup
-├── imap/            # IMAP operations (client, auth, archive)
-├── processor/       # Email processing logic
+├── imap/            # IMAP operations (client, auth, archive, fetcher, filters)
+├── logging/         # Structured logging setup and formatters
+├── security/        # Security features (encryption, fingerprint, key generation)
+├── smtp/            # SMTP operations (client, sender, config)
 ├── storage/         # UID storage and file management
-└── utils/           # Utility functions (email, path, disk, etc.)
+└── utils/           # Utility functions (email, path, disk, folder resolver, context)
 ```
 
-See `ARCHITECTURE_PROPOSAL.md` for detailed architecture documentation.
+Key modules:
+- **`cli/`**: Command-line interface with subcommands for all operations
+- **`config/`**: YAML configuration loading and validation
+- **`imap/`**: Email fetching, attachment downloading, and archiving
+- **`smtp/`**: Email sending with file tracking
+- **`security/`**: Password encryption and system-based key derivation
+- **`storage/`**: Processed UID tracking and sent file management
+- **`utils/`**: Helper functions for common operations
 
 # 📚 Additional Documentation
 

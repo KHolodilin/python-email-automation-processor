@@ -90,7 +90,9 @@ Modular test structure matching the codebase architecture:
   - `test_fetcher_storage.py`: Processed UID storage tests (9 tests)
   - `test_fetcher_file_ops.py`: File operations tests (8 tests)
   - `test_fetcher_errors.py`: Error handling and edge cases (17 tests)
-- **`tests/unit/processor/`**: Email processing, filtering, and attachment handling tests
+- **`tests/unit/cli/`**: CLI commands and UI tests
+- **`tests/unit/security/`**: Security and encryption tests
+- **`tests/unit/smtp/`**: SMTP sending and file tracking tests
 - **`tests/unit/storage/`**: UID storage and file management tests
 - **`tests/unit/utils/`**: Utility function tests (email, path, disk, folder resolver)
 
