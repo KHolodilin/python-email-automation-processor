@@ -6,7 +6,7 @@ Email Processor is a reliable, idempotent, and secure tool for automatic email p
 - **SMTP**: sends files via email with automatic tracking of sent files
 - stores processed email UIDs in separate files by date
 - uses keyring for secure password storage
-- **поддержка командной структуры с подкомандами**
+- **command structure with subcommands support**
 - **progress bar** for long-running operations
 - **file extension filtering** (whitelist/blacklist)
 - **disk space checking** before downloads
@@ -52,215 +52,215 @@ This ensures:
 
 ---
 
-# 🚀 Быстрый старт
+# 🚀 Quick Start
 
-## Установка и первая настройка
+## Installation and Initial Setup
 
-### 1. Установка зависимостей
+### 1. Install Dependencies
 ```bash
-# Создайте виртуальное окружение (рекомендуется)
+# Create a virtual environment (recommended)
 python -m venv .venv
 .venv\Scripts\activate  # Windows
-# или
+# or
 source .venv/bin/activate  # Linux/macOS
 
-# Установите зависимости
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Создание конфигурации
+### 2. Create Configuration
 ```bash
-# Создайте файл конфигурации из шаблона
+# Create configuration file from template
 python -m email_processor config init
 
-# Отредактируйте config.yaml с вашими настройками IMAP/SMTP
+# Edit config.yaml with your IMAP/SMTP settings
 ```
 
-### 3. Установка пароля
+### 3. Set Password
 ```bash
-# Установите пароль для IMAP (будет запрошен интерактивно)
+# Set IMAP password (will be prompted interactively)
 python -m email_processor password set --user your_email@example.com
 
-# Или из файла
+# Or from file
 python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
 ```
 
-### 4. Проверка конфигурации
+### 4. Validate Configuration
 ```bash
-# Проверьте корректность конфигурации
+# Validate configuration
 python -m email_processor config validate
 
-# Просмотрите статус системы
+# View system status
 python -m email_processor status
 ```
 
-### 5. Первый запуск
+### 5. First Run
 ```bash
-# Запустите обработку писем (тестовый режим без реальных действий)
+# Run email processing (test mode without real actions)
 python -m email_processor fetch --dry-run
 
-# Реальный запуск
+# Real run
 python -m email_processor fetch
 ```
 
 ---
 
-# 🎯 Использование
+# 🎯 Usage
 
-## Основные команды
+## Main Commands
 
-### Обработка писем
+### Email Processing
 
-#### Полный пайплайн (fetch + send)
+#### Full Pipeline (fetch + send)
 ```bash
-# Обработать письма и отправить файлы
+# Process emails and send files
 python -m email_processor run
 
-# С ограничениями
+# With limitations
 python -m email_processor run --since 7d --max-emails 100
 ```
 
-#### Только получение писем (без отправки)
+#### Email Fetching Only (without sending)
 ```bash
-# Получить письма и вложения
+# Fetch emails and attachments
 python -m email_processor fetch
 
-# Обработать письма за последние 7 дней
+# Process emails from last 7 days
 python -m email_processor fetch --since 7d
 
-# Обработать конкретную папку
+# Process specific folder
 python -m email_processor fetch --folder "INBOX/Important"
 
-# Ограничить количество писем
+# Limit number of emails
 python -m email_processor fetch --max-emails 50
 
-# Тестовый режим (без реальных действий)
+# Test mode (without real actions)
 python -m email_processor fetch --dry-run
 
-# Тестовый режим с мок-сервером (без подключения)
+# Test mode with mock server (without connection)
 python -m email_processor fetch --dry-run-no-connect
 ```
 
-### Отправка файлов по email
+### Sending Files via Email
 
-#### Отправить один файл
+#### Send Single File
 ```bash
-# Отправить файл (--to обязателен)
+# Send file (--to is required)
 python -m email_processor send file /path/to/file.pdf --to recipient@example.com
 
-# С кастомной темой
-python -m email_processor send file file.pdf --to user@example.com --subject "Важный документ"
+# With custom subject
+python -m email_processor send file file.pdf --to user@example.com --subject "Important Document"
 
-# С CC и BCC
+# With CC and BCC
 python -m email_processor send file file.pdf --to user@example.com --cc copy@example.com --bcc hidden@example.com
 
-# Тестовый режим (без реальной отправки)
+# Test mode (without real sending)
 python -m email_processor send file file.pdf --to user@example.com --dry-run
 ```
 
-#### Отправить все файлы из папки
+#### Send All Files from Folder
 ```bash
-# Отправить все новые файлы из папки
+# Send all new files from folder
 python -m email_processor send folder /path/to/folder --to recipient@example.com
 
-# С кастомной темой
-python -m email_processor send folder /path/to/folder --to user@example.com --subject "Пакет файлов"
+# With custom subject
+python -m email_processor send folder /path/to/folder --to user@example.com --subject "File Package"
 ```
 
-**Примечания:**
-- Файлы отслеживаются по SHA256 хешу, поэтому переименованные файлы с тем же содержимым не будут отправлены повторно
-- Уже отправленные файлы автоматически пропускаются
+**Notes:**
+- Files are tracked by SHA256 hash, so renamed files with the same content won't be sent again
+- Already sent files are automatically skipped
 
-### Управление паролями
+### Password Management
 
-#### Установить пароль
+#### Set Password
 ```bash
-# Интерактивный ввод пароля
+# Interactive password input
 python -m email_processor password set --user your_email@example.com
 
-# Из файла (файл будет удален после чтения)
+# From file (file will be deleted after reading)
 python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
 ```
 
-#### Очистить пароль
+#### Clear Password
 ```bash
-# Удалить сохраненный пароль
+# Delete saved password
 python -m email_processor password clear --user your_email@example.com
 ```
 
-### Управление конфигурацией
+### Configuration Management
 
-#### Создать конфигурацию
+#### Create Configuration
 ```bash
-# Создать config.yaml из шаблона
+# Create config.yaml from template
 python -m email_processor config init
 
-# С указанием пути
+# With custom path
 python -m email_processor config init --path /path/to/custom_config.yaml
 ```
 
-#### Проверить конфигурацию
+#### Validate Configuration
 ```bash
-# Валидация конфигурации
+# Validate configuration
 python -m email_processor config validate
 
-# С указанием файла
+# With custom file
 python -m email_processor config validate --config /path/to/config.yaml
 ```
 
-### Просмотр статуса
+### View Status
 ```bash
-# Показать статус системы
+# Show system status
 python -m email_processor status
 ```
 
-Показывает:
-- Версию приложения
-- Путь к конфигурации
-- Настройки IMAP/SMTP
-- Доступность keyring
-- Статистику хранилищ
+Shows:
+- Application version
+- Configuration path
+- IMAP/SMTP settings
+- Keyring availability
+- Storage statistics
 
-### Глобальные опции
+### Global Options
 
-Все команды поддерживают следующие опции:
+All commands support the following options:
 
 ```bash
-# Указать конфигурационный файл
+# Specify configuration file
 --config /path/to/config.yaml
 
-# Тестовый режим (без реальных действий)
+# Test mode (without real actions)
 --dry-run
 
-# Уровень логирования
+# Logging level
 --log-level DEBUG|INFO|WARNING|ERROR
 
-# Путь к файлу логов
+# Log file path
 --log-file /path/to/logs/app.log
 
-# JSON формат логов
+# JSON log format
 --json-logs
 
-# Подробный вывод
+# Verbose output
 --verbose
 
-# Тихий режим (только ошибки)
+# Quiet mode (errors only)
 --quiet
 
-# Версия
+# Version
 --version
 ```
 
-### Примеры комбинирования опций
+### Option Combination Examples
 
 ```bash
-# Подробный вывод с DEBUG логированием
+# Verbose output with DEBUG logging
 python -m email_processor fetch --verbose --log-level DEBUG
 
-# Тестовый режим с JSON логами
+# Test mode with JSON logs
 python -m email_processor run --dry-run --json-logs
 
-# Обработка с ограничениями и логированием
+# Processing with limitations and logging
 python -m email_processor fetch --since 3d --max-emails 20 --log-file logs/run.log
 ```
 
