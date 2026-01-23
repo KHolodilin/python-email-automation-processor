@@ -347,7 +347,8 @@ class TestPasswordFileErrors(unittest.TestCase):
                         password_file,
                     ],
                 ):
-                    with patch("email_processor.cli.ui.CLIUI") as mock_ui_class:
+                    # Patch CLIUI where it's used in __main__.py
+                    with patch("email_processor.__main__.CLIUI") as mock_ui_class:
                         mock_ui = MagicMock()
                         mock_ui.has_rich = False
                         mock_ui_class.return_value = mock_ui
