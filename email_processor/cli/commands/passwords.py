@@ -138,9 +138,11 @@ def set_password(
             if config_path:
                 # Check if it's an ImportError (cryptography not installed)
                 if isinstance(e, ImportError) and "cryptography" in str(e):
+                    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
                     ui.warn(
-                        "Password saved unencrypted. "
-                        "To enable encryption, install cryptography: pip install cryptography>=40.0.0"
+                        f"Password saved unencrypted. "
+                        f"To enable encryption, install cryptography for Python {python_version}: "
+                        f"pip install cryptography>=40.0.0"
                     )
                 else:
                     ui.warn(f"Password saved unencrypted (encryption failed: {e})")

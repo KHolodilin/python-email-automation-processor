@@ -21,9 +21,16 @@ def _get_fernet() -> type[Any]:
 
         return Fernet  # type: ignore[no-any-return]
     except ImportError as e:
+        import sys
+
+        python_version = (
+            f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        )
         raise ImportError(
-            "cryptography package is required for password encryption. "
-            "Install it with: pip install cryptography>=40.0.0"
+            f"cryptography package is required for password encryption. "
+            f"Install it with: pip install cryptography>=40.0.0\n"
+            f"Note: You are using Python {python_version}. "
+            f"Make sure cryptography is installed for this Python version."
         ) from e
 
 
