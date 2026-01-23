@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from email_processor.logging.setup import setup_logging
 from email_processor.storage.sent_files_storage import (
@@ -332,6 +333,43 @@ class TestSentFilesStorage(unittest.TestCase):
             with self.assertRaises(ValueError) as context:
                 get_sent_files_path(self.temp_dir, "2024-01-15")
             self.assertIn("Invalid path detected", str(context.exception))
+
+    def test_load_sent_hashes_for_day_with_multiple_hashes(self):
+        """Test loading sent hashes when file contains multiple hashes."""
+        day_str = "2024-01-15"
+        cache = {}
+
+        # Create file with multiple hashes
+        path = get_sent_files_path(self.temp_dir, day_str)
+        path.write_text("hash1\nhash2\nhash3\n\n", encoding="utf-8")  # Empty line should be skipped
+
+        hashes = load_sent_hashes_for_day(self.temp_dir, day_str, cache)
+
+        self.assertEqual(len(hashes), 3)
+        self.assertIn("hash1", hashes)
+        self.assertIn("hash2", hashes)
+        self.assertIn("hash3", hashes)
+        self.assertEqual(cache[day_str], hashes)
+
+    @patch("email_processor.storage.sent_files_storage.validate_path")
+    def test_cleanup_old_sent_files_invalid_path(self, mock_validate_path):
+        """Test cleanup_old_sent_files skips files with invalid paths."""
+        # Create a file that would be cleaned up
+        old_date = (datetime.now() - timedelta(days=200)).strftime("%Y-%m-%d")
+        old_path = Path(self.temp_dir) / f"{old_date}.txt"
+        old_path.write_text("old_hash\n", encoding="utf-8")
+
+        # Make validate_path return False for this specific path
+        def validate_path_side_effect(root_path, file_path):
+            return str(file_path) != str(old_path)
+
+        mock_validate_path.side_effect = validate_path_side_effect
+
+        cleanup_old_sent_files(self.temp_dir, keep_days=180)
+
+        # File should still exist because validate_path returned False
+        self.assertTrue(old_path.exists())
+        mock_validate_path.assert_called()
 
 
 if __name__ == "__main__":

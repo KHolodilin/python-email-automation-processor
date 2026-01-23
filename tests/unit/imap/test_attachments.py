@@ -7,8 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from email_processor.config.constants import MAX_ATTACHMENT_SIZE
+from email_processor.imap.attachments import AttachmentHandler
 from email_processor.logging.setup import setup_logging
-from email_processor.processor.attachments import AttachmentHandler
 
 
 class TestAttachmentHandler(unittest.TestCase):
@@ -238,7 +238,7 @@ class TestAttachmentHandler(unittest.TestCase):
         result2 = handler.save_attachment(part2, target_folder, "123", dry_run=False)
         self.assertFalse(result2[0])
 
-    @patch("email_processor.processor.attachments.check_disk_space")
+    @patch("email_processor.imap.attachments.check_disk_space")
     def test_save_attachment_insufficient_disk_space(self, mock_check_disk):
         """Test attachment saving when disk space is insufficient."""
         handler = AttachmentHandler()

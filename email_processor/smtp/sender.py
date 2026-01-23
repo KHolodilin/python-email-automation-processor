@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from email_processor.logging.setup import get_logger
+from email_processor.smtp.config import SMTPConfig
 
 
 def format_subject_template(template: str, context: dict[str, str]) -> str:
@@ -334,55 +335,33 @@ class EmailSender:
 
     def __init__(
         self,
-        smtp_server: str,
-        smtp_port: int,
-        smtp_user: str,
-        smtp_password: str,
-        from_address: str,
-        use_tls: bool = True,
-        use_ssl: bool = False,
-        max_retries: int = 5,
-        retry_delay: int = 3,
-        max_email_size_mb: float = 25.0,
-        subject_template: Optional[str] = None,
-        subject_template_package: Optional[str] = None,
+        config: SMTPConfig,
     ):
         """
         Initialize email sender.
 
         Args:
-            smtp_server: SMTP server hostname
-            smtp_port: SMTP server port
-            smtp_user: SMTP username (email address) for authentication
-            smtp_password: SMTP password
-            from_address: Email address to send from (From header)
-            use_tls: Use TLS encryption
-            use_ssl: Use SSL encryption
-            max_retries: Maximum retry attempts for connection
-            retry_delay: Delay between retries in seconds
-            max_email_size_mb: Maximum email size in megabytes
-            subject_template: Optional template for single file subject
-            subject_template_package: Optional template for multiple files subject
+            config: SMTP configuration parameters
         """
-        self.smtp_server = smtp_server
-        self.smtp_port = smtp_port
-        self.smtp_user = smtp_user
-        self.smtp_password = smtp_password
-        self.from_address = from_address
-        self.use_tls = use_tls
-        self.use_ssl = use_ssl
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
-        self.max_email_size_mb = max_email_size_mb
-        self.subject_template = subject_template
-        self.subject_template_package = subject_template_package
+        self.smtp_server = config.smtp_server
+        self.smtp_port = config.smtp_port
+        self.smtp_user = config.smtp_user
+        self.smtp_password = config.smtp_password
+        self.from_address = config.from_address
+        self.use_tls = config.use_tls
+        self.use_ssl = config.use_ssl
+        self.max_retries = config.max_retries
+        self.retry_delay = config.retry_delay
+        self.max_email_size_mb = config.max_email_size_mb
+        self.subject_template = config.subject_template
+        self.subject_template_package = config.subject_template_package
         self.logger = get_logger()
         self.logger.debug(
             "email_sender_initialized",
-            smtp_server=smtp_server,
-            smtp_port=smtp_port,
-            smtp_user=smtp_user,
-            from_address=from_address,
+            smtp_server=config.smtp_server,
+            smtp_port=config.smtp_port,
+            smtp_user=config.smtp_user,
+            from_address=config.from_address,
         )
 
     def send_file(

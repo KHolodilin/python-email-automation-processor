@@ -12,8 +12,8 @@ from email_processor.config.loader import ConfigLoader, load_config, validate_co
 from email_processor.imap.archive import archive_message
 from email_processor.imap.auth import IMAPAuth, clear_passwords, get_imap_password
 from email_processor.imap.client import imap_connect
+from email_processor.imap.fetcher import Fetcher
 from email_processor.logging.setup import get_logger, setup_logging
-from email_processor.processor.email_processor import EmailProcessor
 from email_processor.utils.context import (
     clear_context,
     generate_correlation_id,
@@ -25,12 +25,19 @@ from email_processor.utils.context import (
     set_request_id,
 )
 
+# Backward compatibility alias
+EmailProcessor = Fetcher
+
 
 # Legacy function wrapper for backward compatibility
 def download_attachments(config, dry_run=False):
-    """Legacy function wrapper for backward compatibility."""
-    processor = EmailProcessor(config)
-    processor.process(dry_run=dry_run)
+    """Legacy function wrapper for backward compatibility.
+
+    Returns:
+        ProcessingResult from processor.process()
+    """
+    processor = Fetcher(config)
+    return processor.process(dry_run=dry_run)
 
 
 __all__ = [

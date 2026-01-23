@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from email_processor.logging.setup import setup_logging
+from email_processor.smtp.config import SMTPConfig
 from email_processor.smtp.sender import EmailSender
 from email_processor.storage.sent_files_storage import SentFilesStorage
 
@@ -39,13 +40,14 @@ class TestSMTPIntegration(unittest.TestCase):
         mock_smtp.send_message.return_value = None
         mock_smtp_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
         storage = SentFilesStorage(self.temp_dir)
 
         # Create test file
@@ -77,7 +79,7 @@ class TestSMTPIntegration(unittest.TestCase):
         mock_smtp.send_message.return_value = None
         mock_smtp_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
@@ -85,6 +87,7 @@ class TestSMTPIntegration(unittest.TestCase):
             from_address="sender@example.com",
             max_email_size_mb=0.1,  # Small limit to force splitting
         )
+        sender = EmailSender(config=config)
 
         # Create multiple files
         files = []
@@ -119,7 +122,7 @@ class TestSMTPIntegration(unittest.TestCase):
 
     def test_subject_templates_integration(self):
         """Test subject templates in full sending cycle."""
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
@@ -128,6 +131,7 @@ class TestSMTPIntegration(unittest.TestCase):
             subject_template="File: {filename}",
             subject_template_package="Package: {file_count} files",
         )
+        sender = EmailSender(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Test single file with template
@@ -151,13 +155,14 @@ class TestSMTPIntegration(unittest.TestCase):
         mock_smtp = MagicMock()
         mock_smtp_connect.return_value = mock_smtp
 
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
             smtp_password="password",
             from_address="sender@example.com",
         )
+        sender = EmailSender(config=config)
 
         test_file = Path(self.temp_dir) / "test.pdf"
         test_file.write_bytes(b"test content")
@@ -174,7 +179,7 @@ class TestSMTPIntegration(unittest.TestCase):
 
     def test_file_size_limit_enforcement(self):
         """Test that file size limits are enforced."""
-        sender = EmailSender(
+        config = SMTPConfig(
             smtp_server="smtp.example.com",
             smtp_port=587,
             smtp_user="user@example.com",
@@ -182,6 +187,7 @@ class TestSMTPIntegration(unittest.TestCase):
             from_address="sender@example.com",
             max_email_size_mb=1.0,
         )
+        sender = EmailSender(config=config)
 
         # Create file that exceeds limit
         large_file = Path(self.temp_dir) / "large.bin"

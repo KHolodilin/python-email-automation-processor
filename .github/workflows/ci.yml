@@ -32,7 +32,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --tb=short -v --cov=email_processor --cov-report=term-missing --cov-report=xml --cov-fail-under=70
+          pytest --tb=short -v --cov=email_processor --cov-report=term-missing --cov-report=xml --cov-fail-under=95
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

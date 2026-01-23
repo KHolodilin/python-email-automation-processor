@@ -2,13 +2,18 @@
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import yaml
 
 
-def validate_config(cfg: dict) -> None:
-    """Validate configuration structure and required fields."""
+def validate_config(cfg: dict, ui: Optional[Any] = None) -> None:
+    """Validate configuration structure and required fields.
+
+    Args:
+        cfg: Configuration dictionary to validate
+        ui: Optional CLIUI instance for output (if None, uses print as fallback)
+    """
     errors = []
 
     # Validate IMAP section
@@ -72,8 +77,12 @@ def validate_config(cfg: dict) -> None:
         if not isinstance(cfg["allowed_senders"], list):
             errors.append("'allowed_senders' must be a list")
         elif len(cfg["allowed_senders"]) == 0:
-            # Use print for validation warnings before logging is set up
-            print("Warning: 'allowed_senders' is empty - no emails will be processed")
+            # Use ui.warn if available, otherwise print as fallback
+            warning_msg = "Warning: 'allowed_senders' is empty - no emails will be processed"
+            if ui is not None:
+                ui.warn(warning_msg)
+            else:
+                print(warning_msg)
 
     # Validate topic_mapping (required, must have at least one rule)
     if "topic_mapping" not in cfg:
@@ -143,8 +152,16 @@ def validate_config(cfg: dict) -> None:
         raise ValueError(error_msg)
 
 
-def load_config(path: str) -> dict[str, Any]:
-    """Load and validate configuration from YAML file."""
+def load_config(path: str, ui: Optional[Any] = None) -> dict[str, Any]:
+    """Load and validate configuration from YAML file.
+
+    Args:
+        path: Path to configuration file
+        ui: Optional CLIUI instance for output (if None, uses print as fallback)
+
+    Returns:
+        Configuration dictionary
+    """
     config_path = Path(path)
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
@@ -160,7 +177,7 @@ def load_config(path: str) -> dict[str, Any]:
     if not isinstance(cfg, dict):
         raise TypeError(f"{path} must contain a top-level YAML object (dictionary).")
 
-    validate_config(cfg)
+    validate_config(cfg, ui=ui)
     return cfg
 
 
@@ -168,11 +185,24 @@ class ConfigLoader:
     """Configuration loader class."""
 
     @staticmethod
-    def load(path: str) -> dict[str, Any]:
-        """Load and validate configuration from YAML file."""
-        return load_config(path)
+    def load(path: str, ui: Optional[Any] = None) -> dict[str, Any]:
+        """Load and validate configuration from YAML file.
+
+        Args:
+            path: Path to configuration file
+            ui: Optional CLIUI instance for output (if None, uses print as fallback)
+
+        Returns:
+            Configuration dictionary
+        """
+        return load_config(path, ui=ui)
 
     @staticmethod
-    def validate(cfg: dict) -> None:
-        """Validate configuration structure and required fields."""
-        validate_config(cfg)
+    def validate(cfg: dict, ui: Optional[Any] = None) -> None:
+        """Validate configuration structure and required fields.
+
+        Args:
+            cfg: Configuration dictionary to validate
+            ui: Optional CLIUI instance for output (if None, uses print as fallback)
+        """
+        validate_config(cfg, ui=ui)

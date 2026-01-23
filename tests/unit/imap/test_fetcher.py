@@ -7,12 +7,15 @@ from email import message_from_bytes
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from email_processor.logging.setup import setup_logging
-from email_processor.processor.email_processor import (
-    EmailProcessor,
+from email_processor.imap.fetcher import (
+    Fetcher,
     ProcessingResult,
     get_start_date,
 )
+from email_processor.logging.setup import setup_logging
+
+# Backward compatibility alias
+EmailProcessor = Fetcher
 
 
 class TestGetStartDate(unittest.TestCase):
@@ -86,8 +89,8 @@ class TestEmailProcessor(unittest.TestCase):
         processor = EmailProcessor(config)
         self.assertIsNotNone(processor.logger)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_no_emails(self, mock_imap_connect, mock_get_password):
         """Test processing with no emails."""
         mock_get_password.return_value = "password"
@@ -103,7 +106,7 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.imap.fetcher.get_imap_password")
     def test_process_password_error(self, mock_get_password):
         """Test processing with password error."""
         mock_get_password.side_effect = ValueError("Password not entered")
@@ -115,7 +118,7 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.imap.fetcher.get_imap_password")
     def test_process_password_keyring_error(self, mock_get_password):
         """Test processing with keyring error (KeyError)."""
         mock_get_password.side_effect = KeyError("Password not found")
@@ -127,7 +130,7 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.imap.fetcher.get_imap_password")
     def test_process_password_runtime_error(self, mock_get_password):
         """Test processing with runtime error from keyring."""
         mock_get_password.side_effect = RuntimeError("Keyring error")
@@ -139,7 +142,7 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
+    @patch("email_processor.imap.fetcher.get_imap_password")
     def test_process_password_unexpected_error(self, mock_get_password):
         """Test processing with unexpected password error."""
         mock_get_password.side_effect = Exception("Unexpected error")
@@ -151,8 +154,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_connection_error(self, mock_imap_connect, mock_get_password):
         """Test processing with connection error."""
         mock_get_password.return_value = "password"
@@ -165,8 +168,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_imap_network_error_timeout(self, mock_imap_connect, mock_get_password):
         """Test processing with timeout error."""
         mock_get_password.return_value = "password"
@@ -179,8 +182,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_imap_network_error_oserror(self, mock_imap_connect, mock_get_password):
         """Test processing with OSError."""
         mock_get_password.return_value = "password"
@@ -193,8 +196,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_imap_connection_unexpected_error(self, mock_imap_connect, mock_get_password):
         """Test processing with unexpected IMAP connection error."""
         mock_get_password.return_value = "password"
@@ -207,8 +210,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_inbox_select_failed(self, mock_imap_connect, mock_get_password):
         """Test processing when INBOX select fails."""
         mock_get_password.return_value = "password"
@@ -223,8 +226,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_inbox_select_imap_error(self, mock_imap_connect, mock_get_password):
         """Test processing when INBOX select raises IMAP4.error."""
         import imaplib
@@ -241,8 +244,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_inbox_select_invalid_state_attribute_error(
         self, mock_imap_connect, mock_get_password
     ):
@@ -259,8 +262,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_inbox_select_invalid_state_type_error(
         self, mock_imap_connect, mock_get_password
     ):
@@ -277,8 +280,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_inbox_select_unexpected_error(self, mock_imap_connect, mock_get_password):
         """Test processing when INBOX select raises unexpected error."""
         mock_get_password.return_value = "password"
@@ -293,8 +296,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_search_error(self, mock_imap_connect, mock_get_password):
         """Test processing when search fails."""
         mock_get_password.return_value = "password"
@@ -310,8 +313,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_search_imap_error(self, mock_imap_connect, mock_get_password):
         """Test processing when search raises IMAP4.error."""
         import imaplib
@@ -329,8 +332,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_search_invalid_state_attribute_error(
         self, mock_imap_connect, mock_get_password
     ):
@@ -348,8 +351,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_search_invalid_state_type_error(self, mock_imap_connect, mock_get_password):
         """Test processing when search raises TypeError."""
         mock_get_password.return_value = "password"
@@ -365,8 +368,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_search_unexpected_error(self, mock_imap_connect, mock_get_password):
         """Test processing when search raises unexpected error."""
         mock_get_password.return_value = "password"
@@ -382,8 +385,8 @@ class TestEmailProcessor(unittest.TestCase):
         self.assertEqual(result.skipped, 0)
         self.assertEqual(result.errors, 0)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_dry_run(self, mock_imap_connect, mock_get_password):
         """Test processing in dry-run mode."""
         mock_get_password.return_value = "password"
@@ -399,8 +402,8 @@ class TestEmailProcessor(unittest.TestCase):
         # Should complete without errors
         self.assertIsInstance(result, ProcessingResult)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_cleanup_error(self, mock_imap_connect, mock_get_password):
         """Test processing when cleanup fails."""
         mock_get_password.return_value = "password"
@@ -410,7 +413,7 @@ class TestEmailProcessor(unittest.TestCase):
         mock_imap_connect.return_value = mock_mail
 
         with patch(
-            "email_processor.processor.email_processor.cleanup_old_processed_days",
+            "email_processor.imap.fetcher.cleanup_old_processed_days",
             side_effect=Exception("Cleanup error"),
         ):
             processor = EmailProcessor(self.config)
@@ -460,7 +463,7 @@ class TestProcessEmail(unittest.TestCase):
         mock_mail = MagicMock()
         mock_mail.fetch.return_value = ("NO", None)
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
@@ -472,7 +475,7 @@ class TestProcessEmail(unittest.TestCase):
         mock_mail = MagicMock()
         mock_mail.fetch.return_value = ("OK", [(b"No UID here", None)])
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
@@ -487,7 +490,7 @@ class TestProcessEmail(unittest.TestCase):
             ("NO", None),  # Header fetch fails
         ]
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
@@ -512,7 +515,7 @@ class TestProcessEmail(unittest.TestCase):
         cache = {}
         save_processed_uid_for_day(self.processor.processed_dir, day_str, "123", cache)
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result, blocked = self.processor._process_email(mock_mail, b"1", cache, False, metrics)
@@ -530,7 +533,7 @@ class TestProcessEmail(unittest.TestCase):
             ("OK", [(None, header_bytes)]),
         ]
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
@@ -547,7 +550,7 @@ class TestProcessEmail(unittest.TestCase):
             ("NO", None),  # Message fetch fails
         ]
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
@@ -567,7 +570,7 @@ class TestProcessEmail(unittest.TestCase):
             ("OK", [(None, msg_bytes)]),
         ]
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result, blocked = self.processor._process_email(mock_mail, b"1", {}, False, metrics)
@@ -583,7 +586,7 @@ class TestProcessEmail(unittest.TestCase):
         from email.mime.base import MIMEBase
         from email.mime.multipart import MIMEMultipart
 
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         msg = MIMEMultipart()
         msg["From"] = "sender@example.com"
@@ -617,7 +620,7 @@ class TestProcessingResult(unittest.TestCase):
 
     def test_processing_result(self):
         """Test ProcessingResult dataclass."""
-        from email_processor.processor.email_processor import ProcessingMetrics
+        from email_processor.imap.fetcher import ProcessingMetrics
 
         metrics = ProcessingMetrics()
         result = ProcessingResult(
@@ -662,8 +665,8 @@ class TestProgressBar(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_with_progress_bar(self, mock_imap_connect, mock_get_password):
         """Test process with progress bar enabled."""
         mock_get_password.return_value = "password"
@@ -679,7 +682,7 @@ class TestProgressBar(unittest.TestCase):
 
         processor = EmailProcessor(config)
         # Mock tqdm to avoid actual progress bar in tests
-        with patch("email_processor.processor.email_processor.tqdm") as mock_tqdm:
+        with patch("email_processor.imap.fetcher.tqdm") as mock_tqdm:
             mock_pbar = MagicMock()
             mock_pbar.__iter__ = lambda self: iter([b"1", b"2", b"3"])
             mock_pbar.set_postfix = MagicMock()
@@ -693,8 +696,8 @@ class TestProgressBar(unittest.TestCase):
                 mock_tqdm.assert_called_once()
                 mock_pbar.close.assert_called_once()
 
-    @patch("email_processor.processor.email_processor.get_imap_password")
-    @patch("email_processor.processor.email_processor.imap_connect")
+    @patch("email_processor.imap.fetcher.get_imap_password")
+    @patch("email_processor.imap.fetcher.imap_connect")
     def test_process_without_progress_bar(self, mock_imap_connect, mock_get_password):
         """Test process with progress bar disabled."""
         mock_get_password.return_value = "password"
@@ -710,7 +713,7 @@ class TestProgressBar(unittest.TestCase):
 
         processor = EmailProcessor(config)
         # Mock tqdm to verify it's not called
-        with patch("email_processor.processor.email_processor.tqdm") as mock_tqdm:
+        with patch("email_processor.imap.fetcher.tqdm") as mock_tqdm:
             result = processor.process(dry_run=False)
 
             # Verify tqdm was not called when show_progress is False

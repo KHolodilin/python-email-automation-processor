@@ -179,11 +179,11 @@ git push origin feature/issue-3-add-project-documentation
 ### Задачи:
 - [ ] Добавить бейджи в начало README.md
   - PyPI version badge: `[![PyPI](https://img.shields.io/pypi/v/email-processor)](https://pypi.org/project/email-processor/)`
-  - CI status badge: `[![CI](https://github.com/vkholodilin/python-email-automation-processor/actions/workflows/ci.yml/badge.svg)](https://github.com/vkholodilin/python-email-automation-processor/actions/workflows/ci.yml)`
-  - Test Coverage badge: `[![Test Coverage](https://codecov.io/gh/vkholodilin/python-email-automation-processor/branch/main/graph/badge.svg)](https://codecov.io/gh/vkholodilin/python-email-automation-processor)`
+  - CI status badge: `[![CI](https://github.com/KHolodilin/python-email-automation-processor/actions/workflows/ci.yml/badge.svg)](https://github.com/KHolodilin/python-email-automation-processor/actions/workflows/ci.yml)`
+  - Test Coverage badge: `[![Test Coverage](https://codecov.io/gh/KHolodilin/python-email-automation-processor/branch/main/graph/badge.svg)](https://codecov.io/gh/KHolodilin/python-email-automation-processor)`
   - Python version badge: `[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)`
-  - License badge: `[![License](https://img.shields.io/github/license/vkholodilin/python-email-automation-processor)](LICENSE)`
-  - Stars badge: `[![Stars](https://img.shields.io/github/stars/vkholodilin/python-email-automation-processor)](https://github.com/vkholodilin/python-email-automation-processor/stargazers)`
+  - License badge: `[![License](https://img.shields.io/github/license/KHolodilin/python-email-automation-processor)](LICENSE)`
+  - Stars badge: `[![Stars](https://img.shields.io/github/stars/KHolodilin/python-email-automation-processor)](https://github.com/KHolodilin/python-email-automation-processor/stargazers)`
   - Code style badge (Ruff): `[![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)`
 - [ ] Проверить корректность ссылок
   - Убедиться, что все ссылки указывают на правильные репозитории

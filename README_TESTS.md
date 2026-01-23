@@ -2,6 +2,13 @@
 
 This project includes comprehensive unit and integration tests.
 
+## Recent Improvements
+
+- ✅ **All tests fixed and passing** (594 tests passing)
+- ✅ **Test structure optimized**: Large `test_fetcher_additional.py` (86.50 KB) was split into 8 focused test files by functionality
+- ✅ **Better organization**: Fetcher tests are now organized by category (header, message, uid, attachment, archive, storage, file_ops, errors)
+- ✅ **Base test class**: Common setup code moved to `test_fetcher_base.py` for reusability
+
 ## Running Tests
 
 ### Install Test Dependencies
@@ -34,9 +41,16 @@ pytest tests/unit/
 pytest tests/test_integration.py
 
 # Run specific module tests
-pytest tests/unit/processor/
 pytest tests/unit/config/
 pytest tests/unit/imap/
+
+# Run specific fetcher test categories
+pytest tests/unit/imap/test_fetcher_header.py      # Header processing
+pytest tests/unit/imap/test_fetcher_message.py     # Message processing
+pytest tests/unit/imap/test_fetcher_attachment.py  # Attachment handling
+pytest tests/unit/imap/test_fetcher_archive.py     # Archive operations
+pytest tests/unit/imap/test_fetcher_storage.py     # UID storage
+pytest tests/unit/imap/test_fetcher_errors.py       # Error handling
 ```
 
 ### Run Specific Test Classes or Functions
@@ -65,7 +79,17 @@ Modular test structure matching the codebase architecture:
 
 - **`tests/unit/config/`**: Configuration loading and validation tests
 - **`tests/unit/logging/`**: Logging setup and formatter tests
-- **`tests/unit/imap/`**: IMAP client, authentication, and archiving tests
+- **`tests/unit/imap/`**: IMAP client, authentication, archiving, and fetcher tests
+  - `test_fetcher.py`: Basic fetcher functionality tests
+  - `test_fetcher_base.py`: Base test class with common setup
+  - `test_fetcher_header.py`: Header processing tests (13 tests)
+  - `test_fetcher_message.py`: Message processing tests (16 tests)
+  - `test_fetcher_uid.py`: UID processing tests (9 tests)
+  - `test_fetcher_attachment.py`: Attachment processing tests (6 tests)
+  - `test_fetcher_archive.py`: Archive operation tests (6 tests)
+  - `test_fetcher_storage.py`: Processed UID storage tests (9 tests)
+  - `test_fetcher_file_ops.py`: File operations tests (8 tests)
+  - `test_fetcher_errors.py`: Error handling and edge cases (17 tests)
 - **`tests/unit/processor/`**: Email processing, filtering, and attachment handling tests
 - **`tests/unit/storage/`**: UID storage and file management tests
 - **`tests/unit/utils/`**: Utility function tests (email, path, disk, folder resolver)
@@ -115,7 +139,7 @@ The tests cover:
 When adding new functionality:
 
 1. Add unit tests in the appropriate module directory under `tests/unit/`
-   - Match the structure of the codebase (e.g., `tests/unit/processor/` for processor tests)
+   - Match the structure of the codebase (e.g., `tests/unit/imap/` for IMAP tests)
 2. Add integration tests for workflows in `tests/test_integration.py`
 3. Use fixtures from `conftest.py` when possible
 4. Mock external dependencies (keyring, imaplib, file system, tqdm)
@@ -125,7 +149,24 @@ When adding new functionality:
 
 - Unit tests: `tests/unit/<module>/test_<component>.py`
 - Integration tests: `tests/test_integration.py`
-- Example: `tests/unit/processor/test_email_processor.py`
+- Example: `tests/unit/imap/test_fetcher_header.py`
+
+### Fetcher Test Structure
+
+The Fetcher tests are organized by functionality for better maintainability:
+
+- **Base class**: `test_fetcher_base.py` - Contains `TestFetcherBase` with common `setUp()` and `tearDown()` methods
+- **Category-specific tests**: Each file focuses on a specific aspect:
+  - `test_fetcher_header.py` - Header parsing and validation
+  - `test_fetcher_message.py` - Message body processing
+  - `test_fetcher_uid.py` - UID extraction and parsing
+  - `test_fetcher_attachment.py` - Attachment handling
+  - `test_fetcher_archive.py` - Email archiving
+  - `test_fetcher_storage.py` - Processed UID storage
+  - `test_fetcher_file_ops.py` - File operations and statistics
+  - `test_fetcher_errors.py` - Error handling and edge cases
+
+When adding new Fetcher tests, place them in the appropriate category file or create a new one if needed.
 
 ## Example Test
 
@@ -158,4 +199,4 @@ def test_my_function(self):
 
 3. **`pytest: reading from stdin while output is captured!`**
    - Убедитесь, что `get_imap_password` правильно замокирован в тестах
-   - Используйте правильный путь для патча: `email_processor.processor.email_processor.get_imap_password`
+   - Используйте правильный путь для патча: `email_processor.imap.fetcher.get_imap_password`

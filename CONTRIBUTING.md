@@ -58,20 +58,22 @@ MyPy is configured via `.mypy.ini` and `pyproject.toml`.
 mypy email_processor
 ```
 
-### 3. Pre-commit Hooks (Optional)
+### 3. Pre-commit Hooks (Required)
 
-Pre-commit hooks automatically run code quality checks before each commit.
+Pre-commit hooks automatically run code quality checks before each commit. **It is required to run pre-commit checks before committing and pushing.**
 
 ```bash
 # Install pre-commit
 pip install pre-commit
 
-# Install git hooks
+# Install git hooks (optional - hooks will run automatically on commit)
 pre-commit install
 
-# Run hooks manually
+# Run hooks manually (REQUIRED before commit and push)
 pre-commit run --all-files
 ```
+
+**Note:** Even if hooks are installed, always run `pre-commit run --all-files` manually before committing to ensure all checks pass.
 
 ### 4. Running Tests
 
@@ -83,32 +85,73 @@ pytest
 pytest --cov=email_processor --cov-report=html
 
 # Run specific test file
-pytest tests/unit/processor/test_email_processor.py
+pytest tests/unit/imap/test_fetcher_header.py
+
+# Run all fetcher tests
+pytest tests/unit/imap/test_fetcher_*.py
+
+# Run specific test category
+pytest tests/unit/imap/test_fetcher_attachment.py
 ```
 
 ### 5. Code Quality Workflow
 
-Before committing:
+**⚠️ IMPORTANT: Before committing and pushing, always run these checks:**
 
-1. **Format code**:
+1. **Check formatting** (required):
+   ```bash
+   ruff format --check .
+   ```
+   If files need formatting, run:
    ```bash
    ruff format .
    ```
 
-2. **Lint code**:
+2. **Run pre-commit checks** (required):
+   ```bash
+   pre-commit run --all-files
+   ```
+   This will run all hooks including:
+   - Trailing whitespace check
+   - End of file fixer
+   - Ruff linting and formatting
+   - Ruff check (full project check)
+   - MyPy type checking
+
+3. **Lint code** (if pre-commit didn't fix everything):
    ```bash
    ruff check --fix .
    ```
 
-3. **Type check** (optional):
+4. **Type check** (optional, also runs in pre-commit):
    ```bash
    mypy email_processor
    ```
 
-4. **Run tests**:
+5. **Run tests**:
    ```bash
    pytest
    ```
+
+**Recommended workflow:**
+```bash
+# 1. Check formatting first
+ruff format --check .
+
+# 2. If needed, format code
+ruff format .
+
+# 3. Run all pre-commit checks
+pre-commit run --all-files
+
+# 4. Run tests
+pytest
+
+# 5. Only then commit and push
+git add .
+git commit -m "your message"
+git push
+```
 
 ### 6. IDE Integration
 
