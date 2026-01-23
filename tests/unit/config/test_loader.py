@@ -216,6 +216,28 @@ class TestConfigValidation(unittest.TestCase):
         except ValueError:
             self.fail("validate_config should not raise ValueError for empty allowed_senders")
 
+    def test_allowed_senders_empty_warning_with_ui(self):
+        """Test that empty allowed_senders uses ui.warn when ui is provided (covers line 83)."""
+        config = {
+            "imap": {
+                "server": "imap.example.com",
+                "user": "test@example.com",
+            },
+            "processing": {},
+            "allowed_senders": [],
+            "topic_mapping": {
+                ".*": "default",
+            },
+        }
+        mock_ui = MagicMock()
+        # Should not raise ValueError
+        validate_config(config, ui=mock_ui)
+        # Should call ui.warn() instead of print()
+        mock_ui.warn.assert_called_once()
+        warning_call = mock_ui.warn.call_args[0][0]
+        self.assertIn("allowed_senders", warning_call)
+        self.assertIn("empty", warning_call)
+
     def test_topic_mapping_not_dict(self):
         """Test validation fails when topic_mapping is not a dictionary."""
         config = {

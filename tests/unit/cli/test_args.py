@@ -135,3 +135,11 @@ class TestParseArguments(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "--version"]):
             with self.assertRaises(SystemExit):
                 parse_arguments()
+
+    def test_parse_arguments_verbose_and_quiet_mutually_exclusive(self):
+        """Test that --verbose and --quiet cannot be used together (covers line 311)."""
+        with patch("sys.argv", ["email_processor", "--verbose", "--quiet"]):
+            with self.assertRaises(SystemExit) as cm:
+                parse_arguments()
+            # argparse raises SystemExit(2) for argument errors
+            self.assertEqual(cm.exception.code, 2)

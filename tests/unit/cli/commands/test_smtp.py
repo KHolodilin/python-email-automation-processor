@@ -1088,6 +1088,22 @@ class TestSMTPSend(unittest.TestCase):
 class TestSMTPConfigErrors(unittest.TestCase):
     """Tests for SMTP configuration error handling."""
 
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.test_file = self.temp_dir / "test.txt"
+        self.test_file.write_text("test content")
+        self.test_folder = self.temp_dir / "test_folder"
+        self.test_folder.mkdir()
+        (self.test_folder / "file1.txt").write_text("content1")
+        (self.test_folder / "file2.txt").write_text("content2")
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.smtp.get_imap_password")
     def test_send_file_missing_smtp_server(self, mock_get_password, mock_load_config):
@@ -1225,6 +1241,8 @@ class TestSMTPWarning(unittest.TestCase):
         self.test_folder = self.temp_dir / "test_folder"
         self.test_folder.mkdir()
         (self.test_folder / "file1.txt").write_text("content1")
+        (self.test_folder / "file2.txt").write_text("content2")
+        (self.test_folder / "file3.txt").write_text("content3")  # Add third file for skipped test
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -1453,3 +1471,159 @@ class TestSMTPWarning(unittest.TestCase):
             result = _init_smtp_components({"smtp": {}}, "", "config.yaml", ui)
             self.assertEqual(result[0], None)  # Should return None when recipient is empty
             mock_error.assert_called_once()
+
+    @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
+    @patch("email_processor.smtp.smtp_connect")
+    @patch("email_processor.cli.commands.smtp.EmailSender")
+    @patch("email_processor.cli.commands.smtp.SentFilesStorage")
+    def test_send_folder_no_new_files_with_rich(
+        self,
+        mock_storage_class,
+        mock_sender_class,
+        mock_smtp_connect,
+        mock_get_password,
+        mock_load_config,
+    ):
+        """Test send_folder with no new files and rich console (covers line 133)."""
+        mock_load_config.load.return_value = {
+            "smtp": {
+                "server": "smtp.example.com",
+                "port": 587,
+                "user": "test@example.com",
+                "from_address": "test@example.com",
+                "default_recipient": "recipient@example.com",
+            },
+        }
+        mock_get_password.return_value = "password"
+        mock_smtp = MagicMock()
+        mock_smtp_connect.return_value = mock_smtp
+        mock_sender = MagicMock()
+        mock_sender_class.return_value = mock_sender
+        mock_storage = MagicMock()
+        mock_storage.is_sent.return_value = True
+        mock_storage_class.return_value = mock_storage
+
+        with patch(
+            "sys.argv",
+            [
+                "email_processor",
+                "send",
+                "folder",
+                str(self.test_folder),
+                "--to",
+                "test@example.com",
+            ],
+        ):
+            with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                mock_ui = MagicMock()
+                mock_ui.has_rich = True
+                mock_ui_class.return_value = mock_ui
+                result = main()
+                self.assertEqual(result, 0)
+                mock_sender.send_file.assert_not_called()
+                # Should use print() with rich formatting
+                mock_ui.print.assert_called()
+                print_call = mock_ui.print.call_args[0][0]
+                self.assertIn("No new files to send", print_call)
+                self.assertIn("[yellow]", print_call)
+
+    @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
+    @patch("email_processor.smtp.smtp_connect")
+    @patch("email_processor.cli.commands.smtp.EmailSender")
+    @patch("email_processor.cli.commands.smtp.SentFilesStorage")
+    def test_send_folder_with_skipped_count_rich(
+        self,
+        mock_storage_class,
+        mock_sender_class,
+        mock_smtp_connect,
+        mock_get_password,
+        mock_load_config,
+    ):
+        """Test send_folder with skipped files and rich console (covers line 157)."""
+        mock_load_config.load.return_value = {
+            "smtp": {
+                "server": "smtp.example.com",
+                "port": 587,
+                "user": "test@example.com",
+                "from_address": "test@example.com",
+                "default_recipient": "recipient@example.com",
+            },
+        }
+        mock_get_password.return_value = "password"
+        mock_smtp = MagicMock()
+        mock_smtp_connect.return_value = mock_smtp
+        mock_sender = MagicMock()
+        mock_sender.send_file.return_value = True
+        mock_sender_class.return_value = mock_sender
+        mock_storage = MagicMock()
+
+        # First file already sent (skipped), second file is new (will be sent)
+        # This ensures skipped_count > 0 and new_files is not empty, so line 157 executes
+        def is_sent_side_effect(file_path, day_str):
+            # Only file1.txt is already sent, file2.txt and file3.txt are new
+            return "file1.txt" in str(file_path)
+
+        mock_storage.is_sent.side_effect = is_sent_side_effect
+        mock_storage_class.return_value = mock_storage
+
+        with patch(
+            "sys.argv",
+            [
+                "email_processor",
+                "send",
+                "folder",
+                str(self.test_folder),
+                "--to",
+                "test@example.com",
+            ],
+        ):
+            with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                mock_ui = MagicMock()
+                mock_ui.has_rich = True
+                mock_ui_class.return_value = mock_ui
+                result = main()
+                self.assertEqual(result, 0)
+                # Should show skipped count with rich formatting
+                mock_ui.print.assert_called()
+                print_calls = [call[0][0] for call in mock_ui.print.call_args_list]
+                skipped_call = next((c for c in print_calls if "Skipped" in str(c)), None)
+                self.assertIsNotNone(skipped_call, "Should show skipped count")
+                self.assertIn("[yellow]", str(skipped_call))
+
+    @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.smtp.get_imap_password")
+    def test_init_smtp_components_missing_to_address(self, mock_get_password, mock_load_config):
+        """Test _init_smtp_components when --to is missing (covers lines 231-232)."""
+        mock_get_password.return_value = "password"
+        mock_load_config.load.return_value = {
+            "smtp": {
+                "server": "smtp.example.com",
+                "port": 587,
+                "user": "test@example.com",
+                "from_address": "test@example.com",
+            },
+        }
+
+        from email_processor.cli.commands.smtp import _init_smtp_components
+        from email_processor.cli.ui import CLIUI
+
+        ui = CLIUI()
+        with patch.object(ui, "error") as mock_error:
+            # Pass full config with server, but empty to_address
+            result = _init_smtp_components(
+                {
+                    "smtp": {
+                        "server": "smtp.example.com",
+                        "port": 587,
+                        "user": "test@example.com",
+                        "from_address": "test@example.com",
+                    }
+                },
+                "",  # Empty to_address
+                "config.yaml",
+                ui,
+            )
+            self.assertEqual(result[0], None)  # Should return None when --to is missing
+            mock_error.assert_called_once_with("--to is required")

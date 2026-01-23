@@ -795,3 +795,116 @@ class TestPasswordFileErrors(unittest.TestCase):
                         mock_ui.error.assert_called()
         finally:
             Path(password_file).unlink(missing_ok=True)
+
+    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.cli.commands.passwords.clear_passwords_func")
+    def test_clear_password_success(self, mock_clear_func, mock_load_config):
+        """Test successful password clearing (covers line 79-80)."""
+        mock_load_config.return_value = {"imap": {}}
+        mock_clear_func.return_value = None
+
+        with patch(
+            "sys.argv", ["email_processor", "password", "clear", "--user", "test@example.com"]
+        ):
+            with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                mock_ui = MagicMock()
+                mock_ui.has_rich = False
+                mock_ui_class.return_value = mock_ui
+                result = main()
+                self.assertEqual(result, 0)
+                mock_clear_func.assert_called_once()
+                mock_ui.success.assert_called_once_with("Password cleared for test@example.com")
+
+    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("keyring.set_password")
+    def test_set_password_interactive_input_no_file(self, mock_set_password, mock_load_config):
+        """Test setting password with interactive input (no file, covers line 117)."""
+        mock_load_config.return_value = {"imap": {"user": "test@example.com"}}
+
+        with patch(
+            "sys.argv", ["email_processor", "password", "set", "--user", "test@example.com"]
+        ):
+            with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                mock_ui = MagicMock()
+                mock_ui.has_rich = False
+                mock_ui.input.return_value = "interactive_password"
+                mock_ui_class.return_value = mock_ui
+                result = main()
+                self.assertEqual(result, 0)
+                mock_set_password.assert_called_once()
+                mock_ui.input.assert_called_once_with("Enter password: ")
+
+    @patch("keyring.set_password")
+    def test_set_password_without_config_path_no_encryption(self, mock_set_password):
+        """Test setting password without config_path (no encryption, covers line 132)."""
+        from email_processor.cli.commands.passwords import set_password
+        from email_processor.cli.ui import CLIUI
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("test_password\n")
+            password_file = f.name
+
+        try:
+            ui = CLIUI()
+            # Call set_password directly with config_path=None to test line 132
+            result = set_password(
+                user="test@example.com",
+                password_file=password_file,
+                delete_after_read=False,
+                config_path=None,  # Explicitly None to test unencrypted save
+                ui=ui,
+            )
+            self.assertEqual(result, 0)
+            # Should save unencrypted password (line 132)
+            mock_set_password.assert_called_once()
+            saved_password = mock_set_password.call_args[0][2]
+            self.assertEqual(saved_password, "test_password")
+        finally:
+            Path(password_file).unlink(missing_ok=True)
+
+    @patch("email_processor.config.loader.ConfigLoader.load")
+    @patch("email_processor.cli.commands.passwords.stat.filemode")
+    def test_read_password_unix_permission_check(self, mock_filemode, mock_load_config):
+        """Test Unix permission check when reading password from file (covers lines 34-44)."""
+        mock_load_config.return_value = {"imap": {"user": "test@example.com"}}
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write("test_password\n")
+            password_file = f.name
+
+        try:
+            from email_processor.cli.commands.passwords import _read_password_from_file
+
+            # Mock Unix platform
+            with patch("email_processor.cli.commands.passwords.sys.platform", "linux"):
+                # Create a mock Path object
+                mock_path = MagicMock(spec=Path)
+                mock_path.exists.return_value = True
+                mock_path.__str__ = lambda x: password_file
+                mock_path.__fspath__ = lambda x: password_file
+
+                # Mock stat() to return a mock with open permissions
+                mock_stat_result = MagicMock()
+                mock_stat_result.st_mode = 0o644  # Readable by group and others
+                mock_path.stat.return_value = mock_stat_result
+
+                mock_ui = MagicMock()
+                mock_ui.has_rich = False
+
+                mock_filemode.return_value = "-rw-r--r--"
+                # Patch Path to return our mocked path
+                with patch("email_processor.cli.commands.passwords.Path", return_value=mock_path):
+                    # Also need to patch open() to read the file
+                    with patch("builtins.open", create=True) as mock_open:
+                        mock_file = MagicMock()
+                        mock_file.readline.return_value = "test_password\n"
+                        mock_open.return_value.__enter__.return_value = mock_file
+                        password = _read_password_from_file(password_file, mock_ui)
+                        # Should read password successfully
+                        self.assertEqual(password, "test_password")
+                        # Check that warning was shown
+                        mock_ui.warn.assert_called()
+                        warning_call = mock_ui.warn.call_args[0][0]
+                        self.assertIn("Password file has open permissions", warning_call)
+        finally:
+            Path(password_file).unlink(missing_ok=True)
