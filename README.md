@@ -1,6 +1,14 @@
 # 📦 Email Attachment Processor
 ### (YAML + keyring + per-day UID storage + password management + modular architecture)
 
+[![PyPI](https://img.shields.io/pypi/v/email-processor)](https://pypi.org/project/email-processor/)
+[![CI](https://github.com/KHolodilin/python-email-automation-processor/actions/workflows/ci.yml/badge.svg)](https://github.com/KHolodilin/python-email-automation-processor/actions/workflows/ci.yml)
+[![Test Coverage](https://codecov.io/gh/KHolodilin/python-email-automation-processor/branch/main/graph/badge.svg)](https://codecov.io/gh/KHolodilin/python-email-automation-processor)
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/github/license/KHolodilin/python-email-automation-processor)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/KHolodilin/python-email-automation-processor)](https://github.com/KHolodilin/python-email-automation-processor/stargazers)
+[![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Email Processor is a reliable, idempotent, and secure tool for automatic email processing:
 - **IMAP**: downloads attachments, organizes them into folders based on subject, archives processed emails
 - **SMTP**: sends files via email with automatic tracking of sent files
