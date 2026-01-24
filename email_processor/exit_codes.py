@@ -2,6 +2,9 @@
 
 This module defines standardized exit codes used throughout the application
 to provide clear error reporting and better integration with scripts and automation tools.
+
+See also: README § Exit Codes for the full table, usage examples (bash, Python),
+and common scenarios.
 """
 
 from enum import IntEnum

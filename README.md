@@ -15,6 +15,7 @@ Email Processor is a reliable, idempotent, and secure tool for automatic email p
 - stores processed email UIDs in separate files by date
 - uses keyring for secure password storage
 - **command structure with subcommands support**
+- **standardized exit codes** (`email_processor.exit_codes.ExitCode`) for scripting and automation
 - **progress bar** for long-running operations
 - **file extension filtering** (whitelist/blacklist)
 - **disk space checking** before downloads
@@ -276,7 +277,7 @@ python -m email_processor fetch --since 3d --max-emails 20 --log-file logs/run.l
 
 ## Exit Codes
 
-The CLI uses standardized exit codes to provide clear error reporting and enable proper error handling in scripts and automation tools. All exit codes are defined in the `ExitCode` enum.
+The CLI uses standardized exit codes to provide clear error reporting and enable proper error handling in scripts and automation tools. All exit codes are defined in the `ExitCode` enum in `email_processor.exit_codes`. The `main()` entry point and all CLI commands return `ExitCode` values (or exit with them); as an `IntEnum`, they compare equal to their integer values (e.g. `ExitCode.SUCCESS == 0`).
 
 ### Standard Exit Codes
 
@@ -352,8 +353,10 @@ else:
 ### Common Exit Code Scenarios
 
 - **`0` (SUCCESS)**: Command executed successfully
+- **`1` (PROCESSING_ERROR)**: IMAP/SMTP processing failed, send/archive error, or write error
 - **`2` (VALIDATION_FAILED)**: Invalid email address, missing required arguments, or invalid command
 - **`3` (FILE_NOT_FOUND)**: Configuration file not found, password file not found, or target file/directory missing
+- **`4` (UNSUPPORTED_FORMAT)**: Authentication/keyring error or unsupported format
 - **`6` (CONFIG_ERROR)**: Configuration file syntax error, validation failure, or missing required settings
 
 ---

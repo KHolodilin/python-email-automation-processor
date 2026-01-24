@@ -227,36 +227,21 @@ git push origin feature/issue-4-add-readme-badges
 
 **Description (EN):** Implement standardized exit codes for the CLI to provide clear error reporting and better integration with scripts and automation tools. Define and document exit codes for different error scenarios to improve user experience and enable proper error handling in automated workflows.
 
+**Status:** Implemented (branch `feature/issue-5-standardize-exit-codes`, PR #26). Exit codes are defined in `email_processor.exit_codes.ExitCode` (IntEnum).
+
 ### Ветка: `feature/issue-5-standardize-exit-codes`
 
 ### Задачи:
-- [ ] Определить константы для exit codes
-  - Создать модуль `email_processor/constants.py` или добавить в существующий
-  - Определить константы для всех exit codes:
-    - `EXIT_SUCCESS = 0`
-    - `EXIT_PROCESSING_ERROR = 1`
-    - `EXIT_VALIDATION_FAILED = 2`
-    - `EXIT_FILE_NOT_FOUND = 3`
-    - `EXIT_UNSUPPORTED_FORMAT = 4`
-    - `EXIT_WARNINGS_AS_ERRORS = 5`
-    - `EXIT_CONFIG_ERROR = 6`
-- [ ] Обновить код CLI для использования стандартных exit codes
-  - Заменить все `return 1` на соответствующие константы
-  - Определить правильные exit codes для каждого типа ошибки:
-    - Ошибки обработки (extraction/parsing/mapping/write) → 1
-    - Ошибки валидации (в strict mode) → 2
-    - Файл не найден → 3
-    - Неподдерживаемый формат → 4
-    - Warnings as errors (--fail-on-warnings) → 5
-    - Ошибки конфигурации → 6
-- [ ] Добавить документацию exit codes в README
-  - Создать раздел "Exit Codes" в README
-  - Описать каждый exit code и когда он используется
-  - Добавить примеры использования в скриптах
-- [ ] Добавить тесты для exit codes
-  - Тесты для каждого типа exit code
-  - Проверка корректности возвращаемых кодов
-  - Интеграционные тесты для различных сценариев
+- [x] Определить константы для exit codes
+  - Модуль `email_processor/exit_codes.py` с enum `ExitCode`:
+    - `SUCCESS = 0`, `PROCESSING_ERROR = 1`, `VALIDATION_FAILED = 2`, `FILE_NOT_FOUND = 3`, `UNSUPPORTED_FORMAT = 4`, `WARNINGS_AS_ERRORS = 5`, `CONFIG_ERROR = 6`
+- [x] Обновить код CLI для использования стандартных exit codes
+  - CLI команды (config, imap, passwords, smtp, status) и `__main__` возвращают `ExitCode`
+  - Соответствие типов ошибок: обработка → 1, валидация → 2, файл не найден → 3, неподдерживаемый формат → 4, warnings as errors → 5, конфигурация → 6
+- [x] Добавить документацию exit codes в README
+  - Раздел "Exit Codes" в README, таблица кодов, примеры (bash, Python), типичные сценарии
+- [x] Добавить тесты для exit codes
+  - Unit- и интеграционные тесты обновлены под новые коды; проверка возвращаемых значений
 
 ### Стандартные exit codes:
 - `0`: Success
@@ -267,29 +252,11 @@ git push origin feature/issue-4-add-readme-badges
 - `5`: Warnings as errors (--fail-on-warnings enabled)
 - `6`: Configuration error
 
-### По окончанию:
+### Проверка после внедрения:
 ```bash
-# Тестирование и проверки
 pytest tests/ -v
-# Проверить различные сценарии и их exit codes
-python -m email_processor --version  # Должен вернуть 0
-python -m email_processor --config nonexistent.yaml  # Должен вернуть 6
-# и т.д.
-
-# Коммит
-git add .
-git commit -m "feat: standardize CLI exit codes
-
-- Add exit code constants
-- Update CLI to use standardized exit codes
-- Add exit codes documentation to README
-- Add tests for exit codes
-
-Fixes #5"
-
-# Push и создание PR (вручную)
-git push origin feature/issue-5-standardize-exit-codes
-# Затем создать Pull Request через GitHub UI или CLI
+python -m email_processor --version   # 0 (SUCCESS)
+python -m email_processor run --config nonexistent.yaml  # 6 (CONFIG_ERROR)
 ```
 
 ---
