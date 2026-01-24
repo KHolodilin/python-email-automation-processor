@@ -5,6 +5,7 @@ import time
 from typing import Union
 
 from email_processor.logging.setup import get_logger
+from email_processor.utils.redact import redact_email
 
 
 def smtp_connect(
@@ -67,7 +68,7 @@ def smtp_connect(
                     smtp.starttls()
                     logger.debug("smtp_tls_started")
 
-            logger.debug("smtp_authenticating", user=user)
+            logger.debug("smtp_authenticating", user=redact_email(user))
             smtp.login(user, password)
             logger.debug("smtp_authenticated")
             logger.info(

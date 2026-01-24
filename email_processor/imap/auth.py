@@ -12,6 +12,7 @@ from email_processor.security.encryption import (
     encrypt_password,
     is_encrypted,
 )
+from email_processor.utils.redact import redact_email
 
 
 def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
@@ -32,11 +33,13 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
             try:
                 password = decrypt_password(stored_password, config_path)
                 logger.debug(
-                    "password_decrypted_length", password_length=len(password), user=imap_user
+                    "password_decrypted_length",
+                    password_length=len(password),
+                    user=redact_email(imap_user),
                 )
                 logger.info(
                     "password_retrieved_decrypted",
-                    user=imap_user,
+                    user=redact_email(imap_user),
                     service=KEYRING_SERVICE_NAME,
                 )
                 return password
@@ -44,7 +47,7 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
                 # Decryption failed - system characteristics may have changed
                 logger.error(
                     "password_decryption_failed",
-                    user=imap_user,
+                    user=redact_email(imap_user),
                     error=str(e),
                     hint="System characteristics may have changed. Password needs to be re-entered.",
                 )
@@ -56,7 +59,7 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
             except Exception as e:
                 logger.error(
                     "password_decryption_error",
-                    user=imap_user,
+                    user=redact_email(imap_user),
                     error=str(e),
                     error_type=type(e).__name__,
                 )
@@ -68,13 +71,13 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
             # Old format - unencrypted password
             logger.info(
                 "password_retrieved",
-                user=imap_user,
+                user=redact_email(imap_user),
                 service=KEYRING_SERVICE_NAME,
                 encrypted=False,
             )
             return stored_password  # type: ignore[no-any-return]
 
-    logger.info("password_not_found", user=imap_user)
+    logger.info("password_not_found", user=redact_email(imap_user))
     pw = getpass.getpass(f"Enter IMAP password for {imap_user}: ")
     if not pw:
         raise ValueError("Password not entered, operation aborted.")
@@ -87,22 +90,26 @@ def get_imap_password(imap_user: str, config_path: Optional[str] = None) -> str:
             keyring.set_password(KEYRING_SERVICE_NAME, imap_user, encrypted_password)
             logger.info(
                 "password_saved_encrypted",
-                user=imap_user,
+                user=redact_email(imap_user),
                 service=KEYRING_SERVICE_NAME,
                 encrypted=True,
             )
         except Exception as e:
-            logger.error("password_save_error", user=imap_user, error=str(e))
+            logger.error("password_save_error", user=redact_email(imap_user), error=str(e))
             # Try saving unencrypted as fallback
             try:
                 keyring.set_password(KEYRING_SERVICE_NAME, imap_user, pw)
                 logger.warning(
                     "password_saved_unencrypted_fallback",
-                    user=imap_user,
+                    user=redact_email(imap_user),
                     error=str(e),
                 )
             except Exception as e2:
-                logger.error("password_save_fallback_error", user=imap_user, error=str(e2))
+                logger.error(
+                    "password_save_fallback_error",
+                    user=redact_email(imap_user),
+                    error=str(e2),
+                )
 
     return pw
 
