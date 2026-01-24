@@ -18,13 +18,12 @@ pip install -e ".[dev]"
 
 This project uses several tools to maintain code quality:
 
-- **Ruff**: Fast Python linter and formatter
-- **Black**: Code formatter
+- **Ruff**: Fast Python linter and formatter (replaces Black, flake8, isort, etc.)
 - **MyPy**: Static type checker
 
 #### Ruff
 
-Ruff is configured via `ruff.toml`. It combines the functionality of multiple linters (flake8, isort, etc.).
+Ruff is configured via `ruff.toml`. It combines the functionality of multiple linters (flake8, isort, Black, etc.) and is used for both linting and formatting.
 
 ```bash
 # Check for issues
@@ -33,20 +32,11 @@ ruff check .
 # Auto-fix issues
 ruff check --fix .
 
-# Format code (alternative to black)
-ruff format .
-```
-
-#### Black
-
-Black is configured via `pyproject.toml`.
-
-```bash
-# Check formatting
-black --check .
-
 # Format code
-black .
+ruff format .
+
+# Check formatting without making changes
+ruff format --check .
 ```
 
 #### MyPy
@@ -163,12 +153,12 @@ Add to `.vscode/settings.json`:
 {
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
-  "python.formatting.provider": "black",
   "editor.formatOnSave": true,
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.codeActionsOnSave": {
-      "source.organizeImports": true
+      "source.organizeImports": true,
+      "source.fixAll": true
     }
   }
 }
@@ -177,13 +167,13 @@ Add to `.vscode/settings.json`:
 #### PyCharm
 
 1. Install Ruff plugin
-2. Configure Black as formatter
+2. Configure Ruff as formatter and linter
 3. Enable MyPy inspection
 
 ## Configuration Files
 
-- `ruff.toml` - Ruff linter configuration
-- `pyproject.toml` - Black, MyPy, and project metadata
+- `ruff.toml` - Ruff linter and formatter configuration
+- `pyproject.toml` - MyPy and project metadata
 - `.mypy.ini` - MyPy type checker configuration
 - `.pre-commit-config.yaml` - Pre-commit hooks configuration
 - `pytest.ini` - Pytest test configuration

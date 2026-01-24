@@ -1,103 +1,103 @@
-# План работ по улучшению проекта
+# Project Improvement Plan
 
-## Структура плана
-Каждая задача включает:
-1. Создание GitHub Issue
-2. Создание ветки `feature/issue-{номер}-{название}`
-3. **Переход на новую ветку** (вручную): `git checkout -b feature/issue-{номер}-{название}`
-4. Реализацию изменений
-5. Тестирование и проверки
-6. Коммит изменений
-7. **Поднять версию** в `pyproject.toml` перед созданием PR (patch version: 7.4.X → 7.4.X+1)
-8. **Push ветки** (вручную): `git push origin feature/issue-{номер}-{название}`
-9. **Создание Pull Request** с веткой `main`/`master`
+## Plan Structure
+Each task includes:
+1. Create GitHub Issue
+2. Create branch `feature/issue-{number}-{name}`
+3. **Switch to new branch** (manually): `git checkout -b feature/issue-{number}-{name}`
+4. Implement changes
+5. Testing and verification
+6. Commit changes
+7. **Bump version** in `pyproject.toml` before creating PR (patch version: 7.4.X → 7.4.X+1)
+8. **Push branch** (manually): `git push origin feature/issue-{number}-{name}`
+9. **Create Pull Request** with `main`/`master` branch
 
 ---
 
-## Issue #1: Интеграция с Codecov
+## Issue #1: Codecov Integration
 
 **Title (EN):** Integrate Codecov for coverage reporting
 
 **Description (EN):** Improve Codecov integration in CI/CD pipeline. Currently, Codecov action is present but may not be fully configured. Enhance the integration to ensure proper coverage reporting, add coverage thresholds, and configure Codecov settings for better visibility and reporting.
 
-### Ветка: `feature/issue-1-integrate-codecov`
+### Branch: `feature/issue-1-integrate-codecov`
 
-### Задачи:
-- [ ] Улучшить настройку Codecov в CI workflow
-  - Проверить корректность генерации `coverage.xml`
-  - Добавить флаг `--cov-report=xml` в pytest для генерации XML отчета
-  - Настроить правильные параметры для codecov-action
-  - Добавить токен Codecov (если требуется)
-- [ ] Добавить конфигурацию Codecov
-  - Создать `codecov.yml` для настройки поведения Codecov
-  - Настроить минимальный порог покрытия
-  - Настроить уведомления о падении покрытия
-- [ ] Добавить проверку покрытия в CI
-  - Добавить `--cov-fail-under` для проверки минимального покрытия
-  - Настроить fail при падении покрытия ниже порога
-- [ ] Обновить документацию
-  - Добавить информацию о Codecov в README
-  - Добавить ссылку на Codecov dashboard
+### Tasks:
+- [ ] Improve Codecov configuration in CI workflow
+  - Verify correct generation of `coverage.xml`
+  - Add `--cov-report=xml` flag to pytest for XML report generation
+  - Configure correct parameters for codecov-action
+  - Add Codecov token (if required)
+- [ ] Add Codecov configuration
+  - Create `codecov.yml` to configure Codecov behavior
+  - Set minimum coverage threshold
+  - Configure coverage drop notifications
+- [ ] Add coverage check in CI
+  - Add `--cov-fail-under` for minimum coverage check
+  - Configure fail when coverage drops below threshold
+- [ ] Update documentation
+  - Add Codecov information to README
+  - Add link to Codecov dashboard
 
-### По окончанию:
+### After completion:
 ```bash
-# Тестирование и проверки
+# Testing and verification
 pytest --cov=email_processor --cov-report=xml --cov-report=term-missing
-# Проверить, что coverage.xml создается
-# Проверить, что Codecov получает данные
+# Verify that coverage.xml is created
+# Verify that Codecov receives data
 
-# Коммит
+# Commit
 git add .
 git commit -m "ci: integrate Codecov for coverage reporting
 
 Fixes #1"
 
-# Push и создание PR (вручную)
+# Push and create PR (manually)
 git push origin feature/issue-1-integrate-codecov
-# Затем создать Pull Request через GitHub UI или CLI
+# Then create Pull Request via GitHub UI or CLI
 ```
 
 ---
 
-## Issue #2: Улучшение покрытия тестами до 95%
+## Issue #2: Improve Test Coverage to 95%
 
 **Title (EN):** Improve test coverage to 95%+
 
 **Description (EN):** Increase test coverage from current level to at least 95% by adding comprehensive tests for all modules. This will improve code reliability, maintainability, and ensure better code quality through extensive testing.
 
-### Ветка: `feature/issue-2-improve-test-coverage-95`
+### Branch: `feature/issue-2-improve-test-coverage-95`
 
-### Задачи:
-- [ ] Провести анализ текущего покрытия
-  - Запустить `pytest --cov=email_processor --cov-report=term-missing`
-  - Определить модули с низким покрытием
-  - Составить список недостающих тестов
-- [ ] Добавить тесты для модулей с низким покрытием
-  - Тесты для всех публичных методов и классов
-  - Тесты для edge cases и граничных условий
-  - Тесты для обработки ошибок
-  - Тесты для всех веток кода (if/else, try/except)
-- [ ] Добавить интеграционные тесты
-  - Тесты для полного цикла обработки
-  - Тесты для взаимодействия между модулями
-  - Тесты для реальных сценариев использования
-- [ ] Настроить проверку покрытия в CI
-  - Добавить `--cov-fail-under=95` в pytest команду
-  - Убедиться, что CI падает при покрытии ниже 95%
-- [ ] Обновить документацию по тестированию
-  - Обновить `README_TESTS.md` с информацией о покрытии
-  - Добавить инструкции по запуску тестов с покрытием
+### Tasks:
+- [ ] Analyze current coverage
+  - Run `pytest --cov=email_processor --cov-report=term-missing`
+  - Identify modules with low coverage
+  - Create list of missing tests
+- [ ] Add tests for modules with low coverage
+  - Tests for all public methods and classes
+  - Tests for edge cases and boundary conditions
+  - Tests for error handling
+  - Tests for all code branches (if/else, try/except)
+- [ ] Add integration tests
+  - Tests for full processing cycle
+  - Tests for module interactions
+  - Tests for real-world usage scenarios
+- [ ] Configure coverage check in CI
+  - Add `--cov-fail-under=95` to pytest command
+  - Ensure CI fails when coverage drops below 95%
+- [ ] Update testing documentation
+  - Update `README_TESTS.md` with coverage information
+  - Add instructions for running tests with coverage
 
-### Цель покрытия: ≥95%
+### Coverage Goal: ≥95%
 
-### По окончанию:
+### After completion:
 ```bash
 # Тестирование и проверки
 pytest --cov=email_processor --cov-report=term-missing --cov-fail-under=95
 pre-commit run --all-files
-python -m email_processor --version  # Проверка работоспособности
+python -m email_processor --version  # Verify functionality
 
-# Коммит
+# Commit
 git add .
 git commit -m "test: improve test coverage to 95%+
 
@@ -110,46 +110,46 @@ git push origin feature/issue-2-improve-test-coverage-95
 
 ---
 
-## Issue #3: Добавление документации проекта (Code of Conduct, License, Security Policy, Templates)
+## Issue #3: Add Project Documentation (Code of Conduct, License, Security Policy, Templates)
 
 **Title (EN):** Add project documentation and templates (Code of Conduct, License, Security Policy, Issue/PR templates)
 
 **Description (EN):** Add essential project documentation files including Code of Conduct, License file, Security Policy, and GitHub templates for issues and pull requests. This will improve project professionalism, provide clear guidelines for contributors, and streamline the contribution process.
 
-### Ветка: `feature/issue-3-add-project-documentation`
+### Branch: `feature/issue-3-add-project-documentation`
 
-### Задачи:
-- [ ] Добавить LICENSE файл
-  - Выбрать лицензию (MIT, Apache 2.0, или другая)
-  - Создать `LICENSE` файл с полным текстом лицензии
-  - Обновить `pyproject.toml` если нужно (уже указано MIT)
-- [ ] Добавить CODE_OF_CONDUCT.md
-  - Использовать Contributor Covenant или создать собственный
-  - Добавить информацию о том, как сообщать о нарушениях
-  - Добавить контактную информацию
-- [ ] Добавить SECURITY.md (Security Policy)
-  - Описать процесс сообщения об уязвимостях
-  - Указать поддерживаемые версии
-  - Добавить информацию о процессе исправления
-  - Создать в `.github/SECURITY.md` или в корне проекта
-- [ ] Создать Issue templates
-  - Создать `.github/ISSUE_TEMPLATE/` директорию
-  - Добавить шаблон для bug reports (`bug_report.md`)
-  - Добавить шаблон для feature requests (`feature_request.md`)
-  - Добавить шаблон для вопросов (`question.md`) - опционально
-  - Настроить `config.yml` для выбора шаблона
-- [ ] Создать Pull Request template
-  - Создать `.github/pull_request_template.md`
-  - Добавить секции: описание, тип изменений, проверки, связанные issues
-  - Добавить чеклист для проверки перед PR
+### Tasks:
+- [ ] Add LICENSE file
+  - Choose license (MIT, Apache 2.0, or other)
+  - Create `LICENSE` file with full license text
+  - Update `pyproject.toml` if needed (MIT already specified)
+- [ ] Add CODE_OF_CONDUCT.md
+  - Use Contributor Covenant or create custom one
+  - Add information on how to report violations
+  - Add contact information
+- [ ] Add SECURITY.md (Security Policy)
+  - Describe vulnerability reporting process
+  - Specify supported versions
+  - Add information on fix process
+  - Create in `.github/SECURITY.md` or project root
+- [ ] Create Issue templates
+  - Create `.github/ISSUE_TEMPLATE/` directory
+  - Add template for bug reports (`bug_report.md`)
+  - Add template for feature requests (`feature_request.md`)
+  - Add template for questions (`question.md`) - optional
+  - Configure `config.yml` for template selection
+- [ ] Create Pull Request template
+  - Create `.github/pull_request_template.md`
+  - Add sections: description, change type, checks, related issues
+  - Add checklist for pre-PR verification
 
-### По окончанию:
+### After completion:
 ```bash
-# Проверка файлов
-# Убедиться, что все файлы созданы и корректны
-# Проверить форматирование Markdown
+# File verification
+# Ensure all files are created and correct
+# Check Markdown formatting
 
-# Коммит
+# Commit
 git add .
 git commit -m "docs: add Code of Conduct, License, Security Policy, and templates
 
@@ -161,9 +161,9 @@ git commit -m "docs: add Code of Conduct, License, Security Policy, and template
 
 Fixes #3"
 
-# Push и создание PR (вручную)
+# Push and create PR (manually)
 git push origin feature/issue-3-add-project-documentation
-# Затем создать Pull Request через GitHub UI или CLI
+# Then create Pull Request via GitHub UI or CLI
 ```
 
 ---
