@@ -23,21 +23,21 @@ Each task includes:
 ### Branch: `feature/issue-1-integrate-codecov`
 
 ### Tasks:
-- [ ] Improve Codecov configuration in CI workflow
-  - Verify correct generation of `coverage.xml`
-  - Add `--cov-report=xml` flag to pytest for XML report generation
-  - Configure correct parameters for codecov-action
-  - Add Codecov token (if required)
-- [ ] Add Codecov configuration
-  - Create `codecov.yml` to configure Codecov behavior
-  - Set minimum coverage threshold
-  - Configure coverage drop notifications
-- [ ] Add coverage check in CI
-  - Add `--cov-fail-under` for minimum coverage check
-  - Configure fail when coverage drops below threshold
-- [ ] Update documentation
-  - Add Codecov information to README
-  - Add link to Codecov dashboard
+- [x] Improve Codecov configuration in CI workflow
+  - [x] Verify correct generation of `coverage.xml`
+  - [x] Add `--cov-report=xml` flag to pytest for XML report generation
+  - [x] Configure correct parameters for codecov-action
+  - [x] Add Codecov token (if required)
+- [x] Add Codecov configuration
+  - [x] Create `codecov.yml` to configure Codecov behavior
+  - [x] Set minimum coverage threshold
+  - [x] Configure coverage drop notifications
+- [x] Add coverage check in CI
+  - [x] Add `--cov-fail-under` for minimum coverage check
+  - [x] Configure fail when coverage drops below threshold
+- [x] Update documentation
+  - [x] Add Codecov information to README
+  - [x] Add link to Codecov dashboard
 
 ### After completion:
 ```bash
@@ -68,25 +68,25 @@ git push origin feature/issue-1-integrate-codecov
 ### Branch: `feature/issue-2-improve-test-coverage-95`
 
 ### Tasks:
-- [ ] Analyze current coverage
-  - Run `pytest --cov=email_processor --cov-report=term-missing`
-  - Identify modules with low coverage
-  - Create list of missing tests
-- [ ] Add tests for modules with low coverage
-  - Tests for all public methods and classes
-  - Tests for edge cases and boundary conditions
-  - Tests for error handling
-  - Tests for all code branches (if/else, try/except)
-- [ ] Add integration tests
-  - Tests for full processing cycle
-  - Tests for module interactions
-  - Tests for real-world usage scenarios
-- [ ] Configure coverage check in CI
-  - Add `--cov-fail-under=95` to pytest command
-  - Ensure CI fails when coverage drops below 95%
-- [ ] Update testing documentation
-  - Update `README_TESTS.md` with coverage information
-  - Add instructions for running tests with coverage
+- [x] Analyze current coverage
+  - [x] Run `pytest --cov=email_processor --cov-report=term-missing`
+  - [x] Identify modules with low coverage
+  - [x] Create list of missing tests
+- [x] Add tests for modules with low coverage
+  - [x] Tests for all public methods and classes
+  - [x] Tests for edge cases and boundary conditions
+  - [x] Tests for error handling
+  - [x] Tests for all code branches (if/else, try/except)
+- [x] Add integration tests
+  - [x] Tests for full processing cycle
+  - [x] Tests for module interactions
+  - [x] Tests for real-world usage scenarios
+- [x] Configure coverage check in CI
+  - [x] Add `--cov-fail-under=95` to pytest command
+  - [x] Ensure CI fails when coverage drops below 95%
+- [x] Update testing documentation
+  - [x] Update `README_TESTS.md` with coverage information
+  - [x] Add instructions for running tests with coverage
 
 ### Coverage Goal: ≥95%
 
@@ -119,29 +119,29 @@ git push origin feature/issue-2-improve-test-coverage-95
 ### Branch: `feature/issue-3-add-project-documentation`
 
 ### Tasks:
-- [ ] Add LICENSE file
-  - Choose license (MIT, Apache 2.0, or other)
-  - Create `LICENSE` file with full license text
-  - Update `pyproject.toml` if needed (MIT already specified)
-- [ ] Add CODE_OF_CONDUCT.md
-  - Use Contributor Covenant or create custom one
-  - Add information on how to report violations
-  - Add contact information
-- [ ] Add SECURITY.md (Security Policy)
-  - Describe vulnerability reporting process
-  - Specify supported versions
-  - Add information on fix process
-  - Create in `.github/SECURITY.md` or project root
-- [ ] Create Issue templates
-  - Create `.github/ISSUE_TEMPLATE/` directory
-  - Add template for bug reports (`bug_report.md`)
-  - Add template for feature requests (`feature_request.md`)
-  - Add template for questions (`question.md`) - optional
-  - Configure `config.yml` for template selection
-- [ ] Create Pull Request template
-  - Create `.github/pull_request_template.md`
-  - Add sections: description, change type, checks, related issues
-  - Add checklist for pre-PR verification
+- [x] Add LICENSE file
+  - [x] Choose license (MIT, Apache 2.0, or other)
+  - [x] Create `LICENSE` file with full license text
+  - [x] Update `pyproject.toml` if needed (MIT already specified)
+- [x] Add CODE_OF_CONDUCT.md
+  - [x] Use Contributor Covenant or create custom one
+  - [x] Add information on how to report violations
+  - [x] Add contact information
+- [x] Add SECURITY.md (Security Policy)
+  - [x] Describe vulnerability reporting process
+  - [x] Specify supported versions
+  - [x] Add information on fix process
+  - [x] Create in `.github/SECURITY.md` or project root
+- [x] Create Issue templates
+  - [x] Create `.github/ISSUE_TEMPLATE/` directory
+  - [x] Add template for bug reports (`bug_report.md`)
+  - [x] Add template for feature requests (`feature_request.md`)
+  - [x] Add template for questions (`question.md`) - optional
+  - [x] Configure `config.yml` for template selection
+- [x] Create Pull Request template
+  - [x] Create `.github/pull_request_template.md`
+  - [x] Add sections: description, change type, checks, related issues
+  - [x] Add checklist for pre-PR verification
 
 ### After completion:
 ```bash
@@ -227,36 +227,21 @@ git push origin feature/issue-4-add-readme-badges
 
 **Description (EN):** Implement standardized exit codes for the CLI to provide clear error reporting and better integration with scripts and automation tools. Define and document exit codes for different error scenarios to improve user experience and enable proper error handling in automated workflows.
 
+**Status:** Implemented (branch `feature/issue-5-standardize-exit-codes`, PR #26). Exit codes are defined in `email_processor.exit_codes.ExitCode` (IntEnum).
+
 ### Ветка: `feature/issue-5-standardize-exit-codes`
 
 ### Задачи:
-- [ ] Определить константы для exit codes
-  - Создать модуль `email_processor/constants.py` или добавить в существующий
-  - Определить константы для всех exit codes:
-    - `EXIT_SUCCESS = 0`
-    - `EXIT_PROCESSING_ERROR = 1`
-    - `EXIT_VALIDATION_FAILED = 2`
-    - `EXIT_FILE_NOT_FOUND = 3`
-    - `EXIT_UNSUPPORTED_FORMAT = 4`
-    - `EXIT_WARNINGS_AS_ERRORS = 5`
-    - `EXIT_CONFIG_ERROR = 6`
-- [ ] Обновить код CLI для использования стандартных exit codes
-  - Заменить все `return 1` на соответствующие константы
-  - Определить правильные exit codes для каждого типа ошибки:
-    - Ошибки обработки (extraction/parsing/mapping/write) → 1
-    - Ошибки валидации (в strict mode) → 2
-    - Файл не найден → 3
-    - Неподдерживаемый формат → 4
-    - Warnings as errors (--fail-on-warnings) → 5
-    - Ошибки конфигурации → 6
-- [ ] Добавить документацию exit codes в README
-  - Создать раздел "Exit Codes" в README
-  - Описать каждый exit code и когда он используется
-  - Добавить примеры использования в скриптах
-- [ ] Добавить тесты для exit codes
-  - Тесты для каждого типа exit code
-  - Проверка корректности возвращаемых кодов
-  - Интеграционные тесты для различных сценариев
+- [x] Определить константы для exit codes
+  - Модуль `email_processor/exit_codes.py` с enum `ExitCode`:
+    - `SUCCESS = 0`, `PROCESSING_ERROR = 1`, `VALIDATION_FAILED = 2`, `FILE_NOT_FOUND = 3`, `UNSUPPORTED_FORMAT = 4`, `WARNINGS_AS_ERRORS = 5`, `CONFIG_ERROR = 6`
+- [x] Обновить код CLI для использования стандартных exit codes
+  - CLI команды (config, imap, passwords, smtp, status) и `__main__` возвращают `ExitCode`
+  - Соответствие типов ошибок: обработка → 1, валидация → 2, файл не найден → 3, неподдерживаемый формат → 4, warnings as errors → 5, конфигурация → 6
+- [x] Добавить документацию exit codes в README
+  - Раздел "Exit Codes" в README, таблица кодов, примеры (bash, Python), типичные сценарии
+- [x] Добавить тесты для exit codes
+  - Unit- и интеграционные тесты обновлены под новые коды; проверка возвращаемых значений
 
 ### Стандартные exit codes:
 - `0`: Success
@@ -267,29 +252,11 @@ git push origin feature/issue-4-add-readme-badges
 - `5`: Warnings as errors (--fail-on-warnings enabled)
 - `6`: Configuration error
 
-### По окончанию:
+### Проверка после внедрения:
 ```bash
-# Тестирование и проверки
 pytest tests/ -v
-# Проверить различные сценарии и их exit codes
-python -m email_processor --version  # Должен вернуть 0
-python -m email_processor --config nonexistent.yaml  # Должен вернуть 6
-# и т.д.
-
-# Коммит
-git add .
-git commit -m "feat: standardize CLI exit codes
-
-- Add exit code constants
-- Update CLI to use standardized exit codes
-- Add exit codes documentation to README
-- Add tests for exit codes
-
-Fixes #5"
-
-# Push и создание PR (вручную)
-git push origin feature/issue-5-standardize-exit-codes
-# Затем создать Pull Request через GitHub UI или CLI
+python -m email_processor --version   # 0 (SUCCESS)
+python -m email_processor run --config nonexistent.yaml  # 6 (CONFIG_ERROR)
 ```
 
 ---
@@ -303,24 +270,24 @@ git push origin feature/issue-5-standardize-exit-codes
 ### Ветка: `feature/issue-6-add-quickstart-section`
 
 ### Задачи:
-- [ ] Добавить раздел Quickstart в README.md
-  - Разместить после заголовка и описания, но перед детальными разделами
-  - Включить минимальные шаги для быстрого старта
-  - Добавить примеры основных команд
+- [x] Добавить раздел Quickstart в README.md
+  - [x] Разместить после заголовка и описания, но перед детальными разделами
+  - [x] Включить минимальные шаги для быстрого старта
+  - [x] Добавить примеры основных команд
 - [ ] Структура Quickstart раздела:
-  - Краткое описание (1-2 предложения)
-  - Установка (pip install или из исходников)
-  - Создание конфигурации (--create-config)
-  - Базовый пример использования
-  - Ссылки на детальную документацию
-- [ ] Добавить примеры кода
-  - Пример минимальной конфигурации
-  - Пример запуска обработки
-  - Пример отправки файла через SMTP
+  - [ ] Краткое описание (1-2 предложения)
+  - [x] Установка (pip install или из исходников)
+  - [x] Создание конфигурации (--create-config)
+  - [x] Базовый пример использования
+  - [ ] Ссылки на детальную документацию
+- [x] Добавить примеры кода
+  - [x] Пример минимальной конфигурации
+  - [x] Пример запуска обработки
+  - [x] Пример отправки файла через SMTP
 - [ ] Обновить структуру README
-  - Убедиться, что Quickstart логично вписывается в структуру
-  - Добавить навигацию или ссылки на детальные разделы
-  - Проверить читаемость и последовательность
+  - [ ] Убедиться, что Quickstart логично вписывается в структуру
+  - [ ] Добавить навигацию или ссылки на детальные разделы
+  - [ ] Проверить читаемость и последовательность
 
 ### По окончанию:
 ```bash

@@ -11,6 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from email_processor.__main__ import main
+from email_processor.exit_codes import ExitCode
 
 
 class TestCLIIntegration(unittest.TestCase):
@@ -251,7 +252,7 @@ class TestCLIErrorHandling(unittest.TestCase):
             # argparse will raise SystemExit for invalid command
             with self.assertRaises(SystemExit) as cm:
                 main()
-            self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS
+            self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)
 
     @patch("email_processor.__main__.ConfigLoader")
     def test_config_file_not_found(self, mock_config_loader_class):
@@ -260,7 +261,7 @@ class TestCLIErrorHandling(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run"]):
             result = main()
-            self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+            self.assertEqual(result, ExitCode.CONFIG_ERROR)
 
     @patch("email_processor.__main__.ConfigLoader")
     def test_config_validation_error(self, mock_config_loader_class):
@@ -269,7 +270,7 @@ class TestCLIErrorHandling(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run"]):
             result = main()
-            self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+            self.assertEqual(result, ExitCode.CONFIG_ERROR)
 
 
 if __name__ == "__main__":

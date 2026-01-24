@@ -5,6 +5,7 @@ from typing import Optional
 
 from email_processor import EmailProcessor
 from email_processor.cli.ui import CLIUI
+from email_processor.exit_codes import ExitCode
 from email_processor.imap.fetcher import ProcessingResult
 
 
@@ -29,13 +30,13 @@ def run_processor(
 
         # Display results
         _display_results(result, ui)
-        return 0
+        return ExitCode.SUCCESS
     except KeyboardInterrupt:
         logging.info("Interrupted by user")
-        return 0
+        return ExitCode.SUCCESS
     except Exception:
         logging.exception("Fatal error during email processing")
-        return 1
+        return ExitCode.PROCESSING_ERROR
 
 
 def _display_results(result: ProcessingResult, ui: CLIUI) -> None:

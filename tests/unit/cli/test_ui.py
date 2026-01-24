@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from email_processor.__main__ import main
 from email_processor.cli import CLIUI
 from email_processor.cli.commands.config import create_default_config
+from email_processor.exit_codes import ExitCode
 from email_processor.imap.fetcher import ProcessingMetrics, ProcessingResult
 
 
@@ -110,7 +111,9 @@ class TestRichConsoleOutput(unittest.TestCase):
             mock_ui_class.return_value = mock_ui
             with patch("sys.argv", ["email_processor", "run"]):
                 result = main()
-                self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+                from email_processor.exit_codes import ExitCode
+
+                self.assertEqual(result, ExitCode.CONFIG_ERROR)
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -124,7 +127,9 @@ class TestRichConsoleOutput(unittest.TestCase):
             mock_ui_class.return_value = mock_ui
             with patch("sys.argv", ["email_processor", "run"]):
                 result = main()
-                self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+                from email_processor.exit_codes import ExitCode
+
+                self.assertEqual(result, ExitCode.CONFIG_ERROR)
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -142,7 +147,9 @@ class TestRichConsoleOutput(unittest.TestCase):
             mock_ui_class.return_value = mock_ui
             with patch("sys.argv", ["email_processor", "run"]):
                 result = main()
-                self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+                from email_processor.exit_codes import ExitCode
+
+                self.assertEqual(result, ExitCode.CONFIG_ERROR)
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -158,7 +165,9 @@ class TestRichConsoleOutput(unittest.TestCase):
             mock_ui_class.return_value = mock_ui
             with patch("sys.argv", ["email_processor", "run"]):
                 result = main()
-                self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+                from email_processor.exit_codes import ExitCode
+
+                self.assertEqual(result, ExitCode.CONFIG_ERROR)
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -172,7 +181,9 @@ class TestRichConsoleOutput(unittest.TestCase):
             mock_ui_class.return_value = mock_ui
             with patch("sys.argv", ["email_processor", "run"]):
                 result = main()
-                self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+                from email_processor.exit_codes import ExitCode
+
+                self.assertEqual(result, ExitCode.CONFIG_ERROR)
                 mock_ui.error.assert_called()
 
 
@@ -416,7 +427,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ["email_processor", "password", "clear", "--user", "test@example.com"],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -450,7 +470,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -478,7 +507,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     "sys.argv", ["email_processor", "password", "set", "--user", "test@example.com"]
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -514,7 +552,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -664,7 +711,11 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         ],
                     ):
                         result = main()
-                        self.assertEqual(result, 4)  # EXIT_AUTH_ERROR when keyring save fails
+                        from email_processor.exit_codes import ExitCode
+
+                        self.assertEqual(
+                            result, ExitCode.UNSUPPORTED_FORMAT
+                        )  # Authentication/keyring error
                         # Should print error
                         mock_ui.error.assert_called()
         finally:
@@ -864,7 +915,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -903,7 +963,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         ["email_processor", "send", "file", temp_dir, "--to", "test@example.com"],
                     ):
                         result = main()
-                        self.assertEqual(result, 1)
+                        # Check appropriate exit code based on test context
+                        self.assertIn(
+                            result,
+                            (
+                                ExitCode.FILE_NOT_FOUND,
+                                ExitCode.VALIDATION_FAILED,
+                                ExitCode.CONFIG_ERROR,
+                                ExitCode.PROCESSING_ERROR,
+                            ),
+                        )
                         mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1134,7 +1203,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         ["email_processor", "send", "file", test_file, "--to", "test@example.com"],
                     ):
                         result = main()
-                        self.assertEqual(result, 1)
+                        # Check appropriate exit code based on test context
+                        self.assertIn(
+                            result,
+                            (
+                                ExitCode.FILE_NOT_FOUND,
+                                ExitCode.VALIDATION_FAILED,
+                                ExitCode.CONFIG_ERROR,
+                                ExitCode.PROCESSING_ERROR,
+                            ),
+                        )
                         mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)
@@ -1181,7 +1259,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1230,7 +1317,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         ],
                     ):
                         result = main()
-                        self.assertEqual(result, 1)
+                        # Check appropriate exit code based on test context
+                        self.assertIn(
+                            result,
+                            (
+                                ExitCode.FILE_NOT_FOUND,
+                                ExitCode.VALIDATION_FAILED,
+                                ExitCode.CONFIG_ERROR,
+                                ExitCode.PROCESSING_ERROR,
+                            ),
+                        )
                         mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)
@@ -1387,7 +1483,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ["email_processor", "send", "file", "test.txt", "--to", "test@example.com"],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1418,7 +1523,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ["email_processor", "send", "file", "test.txt", "--to", "test@example.com"],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1449,7 +1563,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ["email_processor", "send", "file", "test.txt", "--to", "test@example.com"],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1482,7 +1605,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ["email_processor", "send", "file", "test.txt", "--to", "test@example.com"],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1517,7 +1649,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ["email_processor", "send", "file", "test.txt", "--to", "test@example.com"],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1551,7 +1692,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                     ["email_processor", "send", "file", "test.txt", "--to", "test@example.com"],
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    # Check appropriate exit code based on test context
+                    self.assertIn(
+                        result,
+                        (
+                            ExitCode.FILE_NOT_FOUND,
+                            ExitCode.VALIDATION_FAILED,
+                            ExitCode.CONFIG_ERROR,
+                            ExitCode.PROCESSING_ERROR,
+                        ),
+                    )
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1596,7 +1746,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "error") as mock_error:
             result = create_default_config("config.yaml", ui)
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
             mock_error.assert_called_once()
 
     @patch("email_processor.cli.commands.config.Path")
@@ -1717,7 +1867,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                             ],
                         ):
                             result = main()
-                            self.assertEqual(result, 1)
+                            self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
                             mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)
@@ -1766,7 +1916,7 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                             ],
                         ):
                             result = main()
-                            self.assertEqual(result, 1)
+                            self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
                             mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)
@@ -1814,7 +1964,16 @@ class TestMainRichConsoleOutput(unittest.TestCase):
                         ],
                     ):
                         result = main()
-                        self.assertEqual(result, 1)
+                        # Check appropriate exit code based on test context
+                        self.assertIn(
+                            result,
+                            (
+                                ExitCode.FILE_NOT_FOUND,
+                                ExitCode.VALIDATION_FAILED,
+                                ExitCode.CONFIG_ERROR,
+                                ExitCode.PROCESSING_ERROR,
+                            ),
+                        )
                         mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)

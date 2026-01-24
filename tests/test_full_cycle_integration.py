@@ -218,37 +218,43 @@ class TestFullCycleIntegration(unittest.TestCase):
         pdf_files = list(invoice_folder.glob("*.pdf"))
         self.assertGreater(len(pdf_files), 0, "PDF files should be downloaded")
 
-        # Create proper SMTP config dict
+        # Create proper SMTP config dict (use isolated sent_files_dir to avoid
+        # sharing state with other tests—same file hash could be marked sent)
         smtp_config_dict = {
             "smtp": {
                 "server": "smtp.example.com",
                 "port": 587,
                 "user": "sender@example.com",
                 "password": "password",
-                "from": "sender@example.com",
+                "from_address": "sender@example.com",
+                "sent_files_dir": str(self.sent_files_dir),
             }
         }
         mock_ui = MagicMock()
         mock_ui.has_rich = False
-        result = send_folder(
-            smtp_config_dict,
-            str(invoice_folder),
-            "recipient@example.com",
-            subject=None,
-            dry_run=False,
-            config_path=None,
-            ui=mock_ui,
-        )
-        # Result can be 0 (success) or 1 (partial failure), but should not be > 1
-        self.assertLessEqual(
-            result, 1, f"Send folder should succeed or have partial failure, got {result}"
+        # Mock get_imap_password to avoid password prompt
+        with patch("email_processor.cli.commands.smtp.get_imap_password", return_value="password"):
+            result = send_folder(
+                smtp_config_dict,
+                str(invoice_folder),
+                "recipient@example.com",
+                subject=None,
+                dry_run=False,
+                config_path="config.yaml",
+                ui=mock_ui,
+            )
+        from email_processor.exit_codes import ExitCode
+
+        # Result can be SUCCESS (0) or PROCESSING_ERROR (1) for partial failure, but should not be CONFIG_ERROR (6)
+        self.assertIn(
+            result,
+            (ExitCode.SUCCESS, ExitCode.PROCESSING_ERROR),
+            f"Send folder should succeed or have partial failure, got {result}",
         )
 
         # Step 3: Verify SMTP was called (if files were sent)
-        # SMTP may not be called if all files were already sent or skipped
-        # But if result is 0, at least some files should have been sent
-        if result == 0:
-            # If successful, SMTP should have been called
+        # We use isolated sent_files_dir, so no files are pre-marked sent; on SUCCESS we must have sent.
+        if result == ExitCode.SUCCESS:
             self.assertTrue(
                 mock_smtp_connect.called, "SMTP should be connected when files are sent"
             )

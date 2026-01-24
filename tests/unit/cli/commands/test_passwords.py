@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from email_processor.__main__ import main
+from email_processor.exit_codes import ExitCode
 from email_processor.security.encryption import is_encrypted
 
 
@@ -152,7 +153,7 @@ class TestSetPassword(unittest.TestCase):
             ],
         ):
             result = main()
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     def test_set_password_file_empty(self, mock_load_config):
@@ -181,7 +182,7 @@ class TestSetPassword(unittest.TestCase):
                 ],
             ):
                 result = main()
-                self.assertEqual(result, 1)
+                self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
         finally:
             Path(password_file).unlink(missing_ok=True)
 
@@ -203,7 +204,7 @@ class TestSetPassword(unittest.TestCase):
         ):
             with patch("email_processor.__main__.CLIUI", mock_ui_class):
                 result = main()
-                self.assertEqual(result, 1)
+                self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                 mock_ui.error.assert_called()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -657,7 +658,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                     # Remove old mock_print patches - use mock_ui instead
                     with patch("builtins.open", side_effect=PermissionError("Permission denied")):
                         result = main()
-                        self.assertEqual(result, 1)
+                        self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
                         mock_ui.error.assert_called()
         finally:
             # Restore permissions for cleanup
@@ -699,7 +700,7 @@ class TestPasswordFileErrors(unittest.TestCase):
                     # Remove old mock_print patches - use mock_ui instead
                     with patch("builtins.open", side_effect=OSError("Read error")):
                         result = main()
-                        self.assertEqual(result, 1)
+                        self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
                         mock_ui.error.assert_called()
         finally:
             Path(password_file).unlink(missing_ok=True)
@@ -791,7 +792,11 @@ class TestPasswordFileErrors(unittest.TestCase):
                         side_effect=Exception("Encryption error"),
                     ):
                         result = main()
-                        self.assertEqual(result, 4)  # EXIT_AUTH_ERROR when keyring save fails
+                        from email_processor.exit_codes import ExitCode
+
+                        self.assertEqual(
+                            result, ExitCode.UNSUPPORTED_FORMAT
+                        )  # Authentication/keyring error
                         mock_ui.error.assert_called()
         finally:
             Path(password_file).unlink(missing_ok=True)

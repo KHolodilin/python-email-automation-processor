@@ -5,6 +5,7 @@ from pathlib import Path
 
 from email_processor.cli.ui import CLIUI
 from email_processor.config.loader import ConfigLoader, validate_config
+from email_processor.exit_codes import ExitCode
 
 CONFIG_EXAMPLE = "config.yaml.example"
 
@@ -25,13 +26,13 @@ def create_default_config(config_path: str, ui: CLIUI) -> int:
     if not example_path.exists():
         ui.error(f"Template file {CONFIG_EXAMPLE} not found")
         ui.info(f"Expected location: {example_path.absolute()}")
-        return 1
+        return ExitCode.FILE_NOT_FOUND
 
     if target_path.exists():
         response = ui.input(f"Configuration file {config_path} already exists. Overwrite? [y/N]: ")
         if response.lower() != "y":
             ui.warn("Cancelled.")
-            return 0
+            return ExitCode.SUCCESS
 
     try:
         # Create parent directories if needed
@@ -43,10 +44,10 @@ def create_default_config(config_path: str, ui: CLIUI) -> int:
             ui.print(f"Please edit [cyan]{config_path}[/cyan] with your IMAP settings.")
         else:
             ui.info(f"Please edit {config_path} with your IMAP settings.")
-        return 0
+        return ExitCode.SUCCESS
     except OSError as e:
         ui.error(f"Error creating configuration file: {e}")
-        return 1
+        return ExitCode.PROCESSING_ERROR
 
 
 def validate_config_file(config_path: str, ui: CLIUI) -> int:
@@ -63,13 +64,13 @@ def validate_config_file(config_path: str, ui: CLIUI) -> int:
         cfg = ConfigLoader.load(config_path, ui=ui)
         validate_config(cfg, ui=ui)
         ui.success(f"Configuration file is valid: {config_path}")
-        return 0
+        return ExitCode.SUCCESS
     except FileNotFoundError as e:
         ui.error(f"Configuration file not found: {e}")
-        return 1
+        return ExitCode.FILE_NOT_FOUND
     except ValueError as e:
         ui.error(f"Configuration validation failed: {e}")
-        return 3
+        return ExitCode.CONFIG_ERROR
     except Exception as e:
         ui.error(f"Unexpected error validating configuration: {e}")
-        return 1
+        return ExitCode.PROCESSING_ERROR
