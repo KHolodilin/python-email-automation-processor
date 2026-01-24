@@ -65,6 +65,18 @@ class TestParseArguments(unittest.TestCase):
             args = parse_arguments()
             self.assertTrue(args.delete_after_read)
 
+    def test_parse_arguments_password_set_without_user(self):
+        """Test parsing password set without --user (optional, fallback from config)."""
+        with patch(
+            "sys.argv",
+            ["email_processor", "password", "set", "--password-file", "p.txt"],
+        ):
+            args = parse_arguments()
+            self.assertEqual(args.command, "password")
+            self.assertEqual(args.password_command, "set")
+            self.assertIsNone(args.user)
+            self.assertEqual(args.password_file, "p.txt")
+
     def test_parse_arguments_dry_run(self):
         """Test parsing --dry-run argument."""
         with patch("sys.argv", ["email_processor", "run", "--dry-run"]):

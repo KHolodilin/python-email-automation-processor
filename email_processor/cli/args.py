@@ -237,8 +237,8 @@ def parse_arguments() -> argparse.Namespace:
     password_set_parser.add_argument(
         "--user",
         type=str,
-        required=True,
-        help="IMAP user login",
+        default=None,
+        help="IMAP user login (default: imap.user from config)",
     )
     password_set_parser.add_argument(
         "--password-file",
@@ -261,8 +261,8 @@ def parse_arguments() -> argparse.Namespace:
     password_clear_parser.add_argument(
         "--user",
         type=str,
-        required=True,
-        help="IMAP user login",
+        default=None,
+        help="IMAP user login (default: imap.user from config)",
     )
 
     # Command: config (with subcommands)

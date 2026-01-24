@@ -159,11 +159,12 @@ def main() -> int:
 
     # Command: password set
     if args.command == "password" and args.password_command == "set":
-        if not args.user:
-            ui.error("--user is required")
+        user = args.user or cfg.get("imap", {}).get("user")
+        if not user:
+            ui.error("--user is required or set imap.user in config")
             return ExitCode.VALIDATION_FAILED
         return passwords.set_password(
-            args.user,
+            user,
             args.password_file if hasattr(args, "password_file") else None,
             args.delete_after_read if hasattr(args, "delete_after_read") else False,
             config_path,
@@ -172,10 +173,11 @@ def main() -> int:
 
     # Command: password clear
     if args.command == "password" and args.password_command == "clear":
-        if not args.user:
-            ui.error("--user is required")
+        user = args.user or cfg.get("imap", {}).get("user")
+        if not user:
+            ui.error("--user is required or set imap.user in config")
             return ExitCode.VALIDATION_FAILED
-        return passwords.clear_passwords(args.user, ui)
+        return passwords.clear_passwords(user, ui)
 
     # Command: send file
     if args.command == "send" and args.send_command == "file":

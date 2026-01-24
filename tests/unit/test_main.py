@@ -1,5 +1,6 @@
 """Tests for __main__ module entry point."""
 
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -28,11 +29,68 @@ class TestMainEntryPoint(unittest.TestCase):
             self.assertEqual(result, ExitCode.SUCCESS)
             mock_clear_passwords.assert_called_once_with("test@example.com", unittest.mock.ANY)
 
-    def test_main_clear_passwords_missing_user(self):
-        """Test main function when --user is missing in password clear mode."""
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_main_clear_passwords_missing_user(self, mock_loader_class):
+        """Test main when --user is missing and imap.user not in config (password clear)."""
+        mock_loader_class.load.return_value = {"imap": {}}
         with patch("sys.argv", ["email_processor", "password", "clear"]):
-            with self.assertRaises(SystemExit):
-                main()
+            with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                mock_ui = MagicMock()
+                mock_ui_class.return_value = mock_ui
+                result = main()
+                self.assertEqual(result, ExitCode.VALIDATION_FAILED)
+                mock_ui.error.assert_called_once()
+                self.assertIn("imap.user", mock_ui.error.call_args[0][0])
+
+    @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.passwords.clear_passwords")
+    def test_main_clear_passwords_uses_imap_user_from_config(
+        self, mock_clear_passwords, mock_loader_class
+    ):
+        """Test password clear without --user uses imap.user from config."""
+        mock_loader_class.load.return_value = {
+            "imap": {"user": "from_config@example.com"},
+            "processing": {},
+        }
+        mock_clear_passwords.return_value = 0
+        with patch("sys.argv", ["email_processor", "password", "clear"]):
+            result = main()
+            self.assertEqual(result, ExitCode.SUCCESS)
+            mock_clear_passwords.assert_called_once_with(
+                "from_config@example.com", unittest.mock.ANY
+            )
+
+    @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.passwords.set_password")
+    def test_main_password_set_uses_imap_user_from_config(
+        self, mock_set_password, mock_loader_class
+    ):
+        """Test password set without --user uses imap.user from config."""
+        mock_loader_class.load.return_value = {
+            "imap": {"user": "from_config@example.com"},
+            "processing": {},
+        }
+        mock_set_password.return_value = 0
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
+            f.write("secret\n")
+            pwd_file = f.name
+        try:
+            with patch(
+                "sys.argv",
+                [
+                    "email_processor",
+                    "password",
+                    "set",
+                    "--password-file",
+                    pwd_file,
+                ],
+            ):
+                result = main()
+                self.assertEqual(result, ExitCode.SUCCESS)
+                mock_set_password.assert_called_once()
+                self.assertEqual(mock_set_password.call_args[0][0], "from_config@example.com")
+        finally:
+            Path(pwd_file).unlink(missing_ok=True)
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     @patch("email_processor.imap.auth.get_imap_password")

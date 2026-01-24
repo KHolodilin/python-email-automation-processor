@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -119,6 +119,50 @@ logging:
             result = main()
             self.assertEqual(result, 0)
             mock_clear_passwords.assert_called_once()
+
+    @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.passwords.clear_passwords")
+    def test_password_clear_uses_imap_user_from_config(
+        self, mock_clear_passwords, mock_config_loader_class
+    ):
+        """Test password clear without --user uses imap.user from config."""
+        mock_config_loader_class.load.return_value = {
+            "imap": {"user": "config_user@example.com"},
+            "processing": {},
+        }
+        mock_clear_passwords.return_value = 0
+        with patch("sys.argv", ["email_processor", "password", "clear"]):
+            result = main()
+            self.assertEqual(result, 0)
+            mock_clear_passwords.assert_called_once_with("config_user@example.com", ANY)
+
+    @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.passwords.set_password")
+    def test_password_set_uses_imap_user_from_config(
+        self, mock_set_password, mock_config_loader_class
+    ):
+        """Test password set without --user uses imap.user from config."""
+        mock_config_loader_class.load.return_value = {
+            "imap": {"user": "config_user@example.com"},
+            "processing": {},
+        }
+        mock_set_password.return_value = 0
+        pwd_file = Path(self.temp_dir) / "pwd.txt"
+        pwd_file.write_text("secret\n")
+        with patch(
+            "sys.argv",
+            [
+                "email_processor",
+                "password",
+                "set",
+                "--password-file",
+                str(pwd_file),
+            ],
+        ):
+            result = main()
+            self.assertEqual(result, 0)
+            mock_set_password.assert_called_once()
+            self.assertEqual(mock_set_password.call_args[0][0], "config_user@example.com")
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.smtp.send_file")

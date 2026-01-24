@@ -88,7 +88,9 @@ python -m email_processor config init
 ### 3. Set Password
 ```bash
 # Set IMAP password (will be prompted interactively)
+# --user can be omitted if imap.user is set in config.yaml
 python -m email_processor password set --user your_email@example.com
+python -m email_processor password set   # uses imap.user from config
 
 # Or from file
 python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
@@ -185,7 +187,9 @@ python -m email_processor send folder /path/to/folder --to user@example.com --su
 #### Set Password
 ```bash
 # Interactive password input
+# --user is optional when imap.user is in config.yaml
 python -m email_processor password set --user your_email@example.com
+python -m email_processor password set   # uses imap.user from config
 
 # From file (file will be deleted after reading)
 python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
@@ -193,8 +197,9 @@ python -m email_processor password set --user your_email@example.com --password-
 
 #### Clear Password
 ```bash
-# Delete saved password
+# Delete saved password (--user optional if imap.user in config)
 python -m email_processor password clear --user your_email@example.com
+python -m email_processor password clear   # uses imap.user from config
 ```
 
 ### Configuration Management
