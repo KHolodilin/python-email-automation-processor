@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from email_processor.cli import CLIUI
 from email_processor.cli.commands.config import create_default_config, validate_config_file
+from email_processor.exit_codes import ExitCode
 
 
 class TestCreateConfigErrors(unittest.TestCase):
@@ -30,7 +31,7 @@ class TestCreateConfigErrors(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "error") as mock_error:
             result = create_default_config("config.yaml", ui)
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.PROCESSING_ERROR)
             mock_error.assert_called_once()
 
     @patch("email_processor.cli.commands.config.Path")
@@ -52,7 +53,7 @@ class TestCreateConfigErrors(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "error") as mock_error:
             result = create_default_config("config.yaml", ui)
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.PROCESSING_ERROR)
             mock_error.assert_called_once()
 
 
@@ -69,7 +70,7 @@ class TestValidateConfigFile(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "success") as mock_success:
             result = validate_config_file("config.yaml", ui)
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_load.assert_called_once_with("config.yaml", ui=ui)
             mock_validate.assert_called_once_with({"imap": {"server": "imap.example.com"}}, ui=ui)
             mock_success.assert_called_once()
@@ -82,7 +83,7 @@ class TestValidateConfigFile(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "error") as mock_error:
             result = validate_config_file("nonexistent.yaml", ui)
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
             mock_error.assert_called_once()
 
     @patch("email_processor.cli.commands.config.ConfigLoader.load")
@@ -95,7 +96,7 @@ class TestValidateConfigFile(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "error") as mock_error:
             result = validate_config_file("config.yaml", ui)
-            self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+            self.assertEqual(result, ExitCode.CONFIG_ERROR)
             mock_load.assert_called_once_with("config.yaml", ui=ui)
             mock_validate.assert_called_once_with({"imap": {}}, ui=ui)
             mock_error.assert_called_once()
@@ -108,7 +109,7 @@ class TestValidateConfigFile(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "error") as mock_error:
             result = validate_config_file("config.yaml", ui)
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.PROCESSING_ERROR)
             mock_error.assert_called_once()
 
 
@@ -134,6 +135,6 @@ class TestCreateConfigRichOutput(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "print") as mock_print:
             result = create_default_config("config.yaml", ui)
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             # Check that print was called with rich formatting
             mock_print.assert_called_once()

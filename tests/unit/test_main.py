@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from email_processor.__main__ import _parse_duration, _validate_email, main
 from email_processor.cli import CLIUI
 from email_processor.cli.commands.config import create_default_config
+from email_processor.exit_codes import ExitCode
 from email_processor.imap.fetcher import ProcessingMetrics, ProcessingResult
 
 
@@ -24,7 +25,7 @@ class TestMainEntryPoint(unittest.TestCase):
             "sys.argv", ["email_processor", "password", "clear", "--user", "test@example.com"]
         ):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_clear_passwords.assert_called_once_with("test@example.com", unittest.mock.ANY)
 
     def test_main_clear_passwords_missing_user(self):
@@ -59,7 +60,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_processor.process.assert_called_once_with(
                 dry_run=False, mock_mode=False, config_path="config.yaml"
             )
@@ -90,7 +91,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run", "--dry-run"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_processor.process.assert_called_once_with(
                 dry_run=True, mock_mode=False, config_path="config.yaml"
             )
@@ -104,7 +105,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run"]):
             result = main()
-            self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+            self.assertEqual(result, ExitCode.CONFIG_ERROR)
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     def test_main_config_validation_error(self, mock_load_config):
@@ -113,7 +114,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run"]):
             result = main()
-            self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+            self.assertEqual(result, ExitCode.CONFIG_ERROR)
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     @patch("email_processor.imap.auth.get_imap_password")
@@ -141,7 +142,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "--config", "custom_config.yaml"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             # ConfigLoader.load is called with ui parameter
             mock_load_config.assert_called_once()
             call_args = mock_load_config.call_args
@@ -179,7 +180,7 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor"]):
             result = main()
             # Should not crash, even with MagicMock metrics
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_processor.process.assert_called_once_with(
                 dry_run=False, mock_mode=False, config_path="config.yaml"
             )
@@ -212,7 +213,7 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch("sys.argv", ["email_processor"]):
             result = main()
             # Should not crash, even with None metrics
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_processor.process.assert_called_once_with(
                 dry_run=False, mock_mode=False, config_path="config.yaml"
             )
@@ -240,7 +241,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     @patch("email_processor.imap.auth.get_imap_password")
@@ -264,7 +265,9 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run"]):
             result = main()
-            self.assertEqual(result, 1)  # EXIT_ERROR
+            from email_processor.exit_codes import ExitCode
+
+            self.assertEqual(result, ExitCode.PROCESSING_ERROR)
 
     @patch("email_processor.cli.commands.config.Path")
     @patch("email_processor.cli.commands.config.shutil.copy2")
@@ -300,7 +303,7 @@ class TestMainEntryPoint(unittest.TestCase):
         ui = CLIUI()
         with patch.object(ui, "error") as mock_error:
             result = create_default_config("config.yaml", ui)
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
             mock_error.assert_called_once()
 
     @patch("email_processor.cli.commands.config.Path")
@@ -338,7 +341,7 @@ class TestMainEntryPoint(unittest.TestCase):
         with patch.object(ui, "input", return_value="n"):
             with patch.object(ui, "warn") as mock_warn:
                 result = create_default_config("config.yaml", ui)
-                self.assertEqual(result, 0)
+                self.assertEqual(result, ExitCode.SUCCESS)
                 mock_warn.assert_called_once_with("Cancelled.")
 
     @patch("email_processor.cli.commands.config.Path")
@@ -367,7 +370,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "config", "init"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_create_config.assert_called_once()
             # Check that config_path was passed
             call_args = mock_create_config.call_args[0]
@@ -380,7 +383,7 @@ class TestMainEntryPoint(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "config", "init", "--path", "custom.yaml"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_create_config.assert_called_once()
             # Check that custom path was passed
             call_args = mock_create_config.call_args[0]
@@ -416,7 +419,7 @@ class TestDryRunNoConnect(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run", "--dry-run-no-connect"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_processor.process.assert_called_once_with(
                 dry_run=True, mock_mode=True, config_path="config.yaml"
             )
@@ -454,7 +457,7 @@ class TestSMTPWarning(unittest.TestCase):
                 mock_logger = MagicMock()
                 mock_get_logger.return_value = mock_logger
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(result, ExitCode.SUCCESS)
                 # Warning is logged via structlog, check that logger.warning was called
                 # The warning is logged through get_logger().warning() which is a structlog bound logger
                 # mock_logger is the return value of get_logger(), so we check mock_logger.warning
@@ -521,7 +524,7 @@ class TestSendFileCommand(unittest.TestCase):
             "sys.argv", ["email_processor", "send", "file", "test.txt", "--to", "test@example.com"]
         ):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_send_file.assert_called_once()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -532,7 +535,7 @@ class TestSendFileCommand(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "send", "file", "--to", "test@example.com"]):
             with self.assertRaises(SystemExit) as cm:
                 main()
-            self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS from argparse
+            self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)  # from argparse
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     def test_send_file_missing_to(self, mock_load_config):
@@ -542,7 +545,7 @@ class TestSendFileCommand(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "send", "file", "test.txt"]):
             with self.assertRaises(SystemExit) as cm:
                 main()
-            self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS from argparse
+            self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)  # from argparse
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     @patch("email_processor.cli.commands.smtp.send_file")
@@ -552,7 +555,7 @@ class TestSendFileCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "send", "file", "test.txt", "--to", "invalid"]):
             result = main()
-            self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+            self.assertEqual(result, ExitCode.VALIDATION_FAILED)
             mock_send_file.assert_not_called()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -578,7 +581,7 @@ class TestSendFileCommand(unittest.TestCase):
             ],
         ):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_send_file.assert_called_once()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -601,7 +604,7 @@ class TestSendFileCommand(unittest.TestCase):
             ],
         ):
             result = main()
-            self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+            self.assertEqual(result, ExitCode.VALIDATION_FAILED)
             mock_send_file.assert_not_called()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -624,7 +627,7 @@ class TestSendFileCommand(unittest.TestCase):
             ],
         ):
             result = main()
-            self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+            self.assertEqual(result, ExitCode.VALIDATION_FAILED)
             mock_send_file.assert_not_called()
 
 
@@ -643,7 +646,7 @@ class TestSendFolderCommand(unittest.TestCase):
             ["email_processor", "send", "folder", "test_dir", "--to", "test@example.com"],
         ):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_send_folder.assert_called_once()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -654,7 +657,7 @@ class TestSendFolderCommand(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "send", "folder", "--to", "test@example.com"]):
             with self.assertRaises(SystemExit) as cm:
                 main()
-            self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS from argparse
+            self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)  # from argparse
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     def test_send_folder_missing_to(self, mock_load_config):
@@ -664,7 +667,7 @@ class TestSendFolderCommand(unittest.TestCase):
         with patch("sys.argv", ["email_processor", "send", "folder", "test_dir"]):
             with self.assertRaises(SystemExit) as cm:
                 main()
-            self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS from argparse
+            self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)  # from argparse
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     @patch("email_processor.cli.commands.smtp.send_folder")
@@ -676,7 +679,7 @@ class TestSendFolderCommand(unittest.TestCase):
             "sys.argv", ["email_processor", "send", "folder", "test_dir", "--to", "invalid"]
         ):
             result = main()
-            self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+            self.assertEqual(result, ExitCode.VALIDATION_FAILED)
             mock_send_folder.assert_not_called()
 
 
@@ -692,7 +695,7 @@ class TestFetchCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "fetch"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -704,7 +707,7 @@ class TestFetchCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "fetch", "--since", "7d"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
             # Check that start_days_back was set to 7
             call_kwargs = mock_run_processor.call_args[0]
@@ -720,7 +723,7 @@ class TestFetchCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "fetch", "--folder", "INBOX"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -732,7 +735,7 @@ class TestFetchCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "fetch", "--max-emails", "10"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -744,7 +747,7 @@ class TestFetchCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "fetch", "--dry-run-no-connect"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
             # Check that mock_mode is True
             call_args = mock_run_processor.call_args[0]
@@ -763,7 +766,7 @@ class TestRunCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run", "--since", "14d"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
             # Check that start_days_back was set to 14
             call_kwargs = mock_run_processor.call_args[0]
@@ -779,7 +782,7 @@ class TestRunCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run", "--folder", "INBOX"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
 
     @patch("email_processor.config.loader.ConfigLoader.load")
@@ -791,7 +794,7 @@ class TestRunCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "run", "--max-emails", "20"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_run_processor.assert_called_once()
 
     def test_parse_duration_invalid_unit(self):
@@ -810,7 +813,7 @@ class TestRunCommand(unittest.TestCase):
 
         with patch("sys.argv", ["email_processor", "config", "validate"]):
             result = main()
-            self.assertEqual(result, 0)
+            self.assertEqual(result, ExitCode.SUCCESS)
             mock_validate.assert_called_once()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -824,7 +827,7 @@ class TestRunCommand(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 3)  # EXIT_CONFIG_ERROR
+                self.assertEqual(result, ExitCode.CONFIG_ERROR)
 
     def test_password_set_missing_user(self):
         """Test password set command with missing user."""
@@ -842,7 +845,7 @@ class TestRunCommand(unittest.TestCase):
                         mock_ui = MagicMock()
                         mock_ui_class.return_value = mock_ui
                         result = main()
-                        self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                        self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                         mock_ui.error.assert_called()
 
     def test_password_clear_missing_user(self):
@@ -861,7 +864,7 @@ class TestRunCommand(unittest.TestCase):
                         mock_ui = MagicMock()
                         mock_ui_class.return_value = mock_ui
                         result = main()
-                        self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                        self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                         mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_file")
@@ -887,7 +890,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_file")
@@ -912,7 +915,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_folder")
@@ -937,7 +940,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_folder")
@@ -962,7 +965,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_folder")
@@ -990,7 +993,7 @@ class TestRunCommand(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                 mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_folder")
@@ -1018,7 +1021,7 @@ class TestRunCommand(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1037,7 +1040,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.setup_logging")
@@ -1170,7 +1173,7 @@ class TestRunCommand(unittest.TestCase):
                 mock_args.quiet = False
                 mock_parse.return_value = mock_args
                 result = main()
-                self.assertEqual(result, 0)
+                self.assertEqual(result, ExitCode.SUCCESS)
                 mock_show_status.assert_called_once()
 
     @patch("email_processor.cli.commands.smtp.send_file")
@@ -1195,7 +1198,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_file")
@@ -1220,7 +1223,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_folder")
@@ -1245,7 +1248,7 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.cli.commands.smtp.send_folder")
@@ -1270,5 +1273,5 @@ class TestRunCommand(unittest.TestCase):
                     mock_ui = MagicMock()
                     mock_ui_class.return_value = mock_ui
                     result = main()
-                    self.assertEqual(result, 2)  # EXIT_INVALID_ARGS
+                    self.assertEqual(result, ExitCode.VALIDATION_FAILED)
                     mock_ui.error.assert_called()

@@ -7,6 +7,7 @@ import keyring
 from email_processor import KEYRING_SERVICE_NAME, __version__
 from email_processor.cli.ui import CLIUI
 from email_processor.config.loader import ConfigLoader
+from email_processor.exit_codes import ExitCode
 
 
 def show_status(config_path: str, ui: CLIUI) -> int:
@@ -92,4 +93,4 @@ def show_status(config_path: str, ui: CLIUI) -> int:
     except Exception as e:
         ui.warn(f"Keyring: Not available ({e})")
 
-    return 0
+    return ExitCode.SUCCESS

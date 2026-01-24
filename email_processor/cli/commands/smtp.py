@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from email_processor.cli.ui import CLIUI
+from email_processor.exit_codes import ExitCode
 from email_processor.imap.auth import get_imap_password
 from email_processor.smtp.config import SMTPConfig
 from email_processor.smtp.sender import EmailSender
@@ -39,21 +40,21 @@ def send_file(
         cfg, to_address, config_path, ui
     )
     if smtp_cfg is None:
-        return 1
+        return ExitCode.CONFIG_ERROR
 
     file_path_obj = Path(file_path)
     if not file_path_obj.exists():
         ui.error(f"File not found: {file_path_obj}")
-        return 1
+        return ExitCode.FILE_NOT_FOUND
 
     if not file_path_obj.is_file():
         ui.error(f"Not a file: {file_path_obj}")
-        return 1
+        return ExitCode.VALIDATION_FAILED
 
     # Check if already sent
     if not dry_run and storage.is_sent(file_path_obj, day_str):
         ui.warn(f"File already sent: {file_path_obj.name}")
-        return 0
+        return ExitCode.SUCCESS
 
     # Send file
     success = sender.send_file(file_path_obj, final_recipient, subject, dry_run=dry_run)
@@ -68,9 +69,9 @@ def send_file(
             ui.info(f"DRY-RUN: Would send file: {file_path_obj.name}")
     else:
         ui.error(f"Failed to send file: {file_path_obj.name}")
-        return 1
+        return ExitCode.PROCESSING_ERROR
 
-    return 0
+    return ExitCode.SUCCESS
 
 
 def send_folder(
@@ -99,23 +100,23 @@ def send_folder(
     smtp_cfg = cfg.get("smtp")
     if not smtp_cfg:
         ui.error("'smtp' section is missing in config.yaml")
-        return 1
+        return ExitCode.CONFIG_ERROR
 
     # Initialize SMTP components
     smtp_cfg_obj, sender, storage, day_str, final_recipient = _init_smtp_components(
         cfg, to_address, config_path, ui
     )
     if smtp_cfg_obj is None:
-        return 1
+        return ExitCode.CONFIG_ERROR
 
     folder_path_obj = Path(folder_path)
     if not folder_path_obj.exists():
         ui.error(f"Folder not found: {folder_path_obj}")
-        return 1
+        return ExitCode.FILE_NOT_FOUND
 
     if not folder_path_obj.is_dir():
         ui.error(f"Not a folder: {folder_path_obj}")
-        return 1
+        return ExitCode.VALIDATION_FAILED
 
     # Find new files
     all_files = [f for f in folder_path_obj.iterdir() if f.is_file()]
@@ -135,7 +136,7 @@ def send_folder(
             )
         else:
             ui.info(f"No new files to send (skipped {skipped_count} already sent)")
-        return 0
+        return ExitCode.SUCCESS
 
     # Send files
     sent_count = 0
@@ -164,7 +165,7 @@ def send_folder(
         if failed_count > 0:
             ui.info(f"Failed: {failed_count} files")
 
-    return 0 if failed_count == 0 else 1
+    return ExitCode.SUCCESS if failed_count == 0 else ExitCode.PROCESSING_ERROR
 
 
 def _init_smtp_components(

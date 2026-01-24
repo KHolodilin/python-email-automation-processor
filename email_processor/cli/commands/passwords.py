@@ -10,6 +10,7 @@ import keyring
 from email_processor import KEYRING_SERVICE_NAME
 from email_processor import clear_passwords as clear_passwords_func
 from email_processor.cli.ui import CLIUI
+from email_processor.exit_codes import ExitCode
 from email_processor.logging.setup import get_logger
 from email_processor.security.encryption import encrypt_password
 
@@ -77,10 +78,10 @@ def clear_passwords(user: str, ui: CLIUI) -> int:
     try:
         clear_passwords_func(KEYRING_SERVICE_NAME, user)
         ui.success(f"Password cleared for {user}")
-        return 0
+        return ExitCode.SUCCESS
     except Exception as e:
         ui.error(f"Failed to clear password: {e}")
-        return 1
+        return ExitCode.PROCESSING_ERROR
 
 
 def set_password(
@@ -106,14 +107,14 @@ def set_password(
     if password_file:
         password = _read_password_from_file(password_file, ui)
         if password is None:
-            return 1
+            return ExitCode.FILE_NOT_FOUND
         password_path = Path(password_file)
     else:
         # Prompt for password
         password = ui.input("Enter password: ")
         if not password:
             ui.error("Password cannot be empty")
-            return 1
+            return ExitCode.VALIDATION_FAILED
         password_path = None
 
     # Log password length for debugging (without showing actual password)
@@ -149,7 +150,7 @@ def set_password(
             ui.success(f"Password saved for {user}")
         except Exception as e2:
             ui.error(f"Failed to save password: {e2}")
-            return 4  # Authentication error
+            return ExitCode.UNSUPPORTED_FORMAT  # Authentication/keyring error
 
     # Remove password file if requested
     if delete_after_read and password_path:
@@ -160,4 +161,4 @@ def set_password(
             ui.warn(f"Failed to remove password file: {e}")
             # Don't fail the command if file removal fails
 
-    return 0
+    return ExitCode.SUCCESS

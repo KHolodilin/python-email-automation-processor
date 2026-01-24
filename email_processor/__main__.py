@@ -8,15 +8,8 @@ from email_processor import ConfigLoader
 from email_processor.cli import CLIUI
 from email_processor.cli.args import parse_arguments
 from email_processor.cli.commands import config, imap, passwords, smtp, status
+from email_processor.exit_codes import ExitCode
 from email_processor.logging.setup import get_logger, setup_logging
-
-# Exit codes according to spec
-EXIT_SUCCESS = 0
-EXIT_ERROR = 1
-EXIT_INVALID_ARGS = 2
-EXIT_CONFIG_ERROR = 3
-EXIT_AUTH_ERROR = 4
-EXIT_NETWORK_ERROR = 5
 
 
 def _validate_email(email_str: str) -> bool:
@@ -49,20 +42,20 @@ def _load_config(config_path: str, ui: CLIUI) -> tuple[dict, int]:
     """
     try:
         cfg = ConfigLoader.load(config_path, ui=ui)
-        return cfg, EXIT_SUCCESS
+        return cfg, ExitCode.SUCCESS
     except FileNotFoundError as e:
         ui.error(str(e))
         if ui.has_rich:
             ui.print(f"Please create [cyan]{config_path}[/cyan] based on config.yaml.example")
         else:
             ui.info(f"Please create {config_path} based on config.yaml.example")
-        return {}, EXIT_CONFIG_ERROR
+        return {}, ExitCode.CONFIG_ERROR
     except ValueError as e:
         ui.error(f"Configuration error: {e}")
-        return {}, EXIT_CONFIG_ERROR
+        return {}, ExitCode.CONFIG_ERROR
     except Exception as e:
         ui.error(f"Unexpected error loading configuration: {e}")
-        return {}, EXIT_CONFIG_ERROR
+        return {}, ExitCode.CONFIG_ERROR
 
 
 def _setup_logging_from_args(cfg: dict, args) -> None:
@@ -147,7 +140,7 @@ def main() -> int:
     # Command: config validate
     if args.command == "config" and args.config_command == "validate":
         cfg, status_code = _load_config(args.config, ui)
-        if status_code != EXIT_SUCCESS:
+        if status_code != ExitCode.SUCCESS:
             return status_code
         return config.validate_config_file(args.config, ui)
 
@@ -158,7 +151,7 @@ def main() -> int:
     # Commands that require config loading
     config_path = args.config
     cfg, status_code = _load_config(config_path, ui)
-    if status_code != EXIT_SUCCESS:
+    if status_code != ExitCode.SUCCESS:
         return status_code
 
     # Setup logging
@@ -168,7 +161,7 @@ def main() -> int:
     if args.command == "password" and args.password_command == "set":
         if not args.user:
             ui.error("--user is required")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         return passwords.set_password(
             args.user,
             args.password_file if hasattr(args, "password_file") else None,
@@ -181,28 +174,28 @@ def main() -> int:
     if args.command == "password" and args.password_command == "clear":
         if not args.user:
             ui.error("--user is required")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         return passwords.clear_passwords(args.user, ui)
 
     # Command: send file
     if args.command == "send" and args.send_command == "file":
         if not hasattr(args, "path") or not args.path:
             ui.error("File path is required")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         if not hasattr(args, "to") or not args.to:
             ui.error("--to is required")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
 
         # Validate email addresses
         if not _validate_email(args.to):
             ui.error(f"Invalid email address: {args.to}")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         if hasattr(args, "cc") and args.cc and not _validate_email(args.cc):
             ui.error(f"Invalid CC email address: {args.cc}")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         if hasattr(args, "bcc") and args.bcc and not _validate_email(args.bcc):
             ui.error(f"Invalid BCC email address: {args.bcc}")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
 
         return smtp.send_file(
             cfg,
@@ -218,21 +211,21 @@ def main() -> int:
     if args.command == "send" and args.send_command == "folder":
         if not hasattr(args, "dir") or not args.dir:
             ui.error("Directory path is required")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         if not hasattr(args, "to") or not args.to:
             ui.error("--to is required")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
 
         # Validate email addresses
         if not _validate_email(args.to):
             ui.error(f"Invalid email address: {args.to}")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         if hasattr(args, "cc") and args.cc and not _validate_email(args.cc):
             ui.error(f"Invalid CC email address: {args.cc}")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
         if hasattr(args, "bcc") and args.bcc and not _validate_email(args.bcc):
             ui.error(f"Invalid BCC email address: {args.bcc}")
-            return EXIT_INVALID_ARGS
+            return ExitCode.VALIDATION_FAILED
 
         return smtp.send_folder(
             cfg,
@@ -300,7 +293,7 @@ def main() -> int:
 
     # Unknown command
     ui.error(f"Unknown command: {args.command}")
-    return EXIT_INVALID_ARGS
+    return ExitCode.VALIDATION_FAILED
 
 
 if __name__ == "__main__":

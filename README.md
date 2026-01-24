@@ -274,6 +274,89 @@ python -m email_processor fetch --since 3d --max-emails 20 --log-file logs/run.l
 
 ---
 
+## Exit Codes
+
+The CLI uses standardized exit codes to provide clear error reporting and enable proper error handling in scripts and automation tools. All exit codes are defined in the `ExitCode` enum.
+
+### Standard Exit Codes
+
+| Code | Constant | Description |
+|------|----------|-------------|
+| `0` | `SUCCESS` | Operation completed successfully |
+| `1` | `PROCESSING_ERROR` | Errors during extraction, parsing, mapping, or write operations |
+| `2` | `VALIDATION_FAILED` | Input validation errors (e.g., invalid arguments, email format) |
+| `3` | `FILE_NOT_FOUND` | Requested file or directory does not exist |
+| `4` | `UNSUPPORTED_FORMAT` | Cannot detect or process the requested format (e.g., authentication/keyring errors) |
+| `5` | `WARNINGS_AS_ERRORS` | Warnings were treated as errors (when `--fail-on-warnings` is enabled) |
+| `6` | `CONFIG_ERROR` | Errors loading or validating configuration file |
+
+### Usage in Scripts
+
+You can use exit codes in shell scripts to handle different error scenarios:
+
+```bash
+#!/bin/bash
+
+# Run email processor
+python -m email_processor run
+
+# Check exit code
+case $? in
+    0)
+        echo "Success: Emails processed successfully"
+        ;;
+    1)
+        echo "Error: Processing failed"
+        exit 1
+        ;;
+    2)
+        echo "Error: Invalid arguments or validation failed"
+        exit 1
+        ;;
+    3)
+        echo "Error: File not found"
+        exit 1
+        ;;
+    6)
+        echo "Error: Configuration file error"
+        exit 1
+        ;;
+    *)
+        echo "Error: Unknown error"
+        exit 1
+        ;;
+esac
+```
+
+### Python Script Example
+
+```python
+import subprocess
+from email_processor.exit_codes import ExitCode
+
+result = subprocess.run(
+    ["python", "-m", "email_processor", "run"],
+    capture_output=True
+)
+
+if result.returncode == ExitCode.SUCCESS:
+    print("Processing completed successfully")
+elif result.returncode == ExitCode.CONFIG_ERROR:
+    print("Configuration error - check config.yaml")
+elif result.returncode == ExitCode.PROCESSING_ERROR:
+    print("Processing error occurred")
+else:
+    print(f"Unexpected exit code: {result.returncode}")
+```
+
+### Common Exit Code Scenarios
+
+- **`0` (SUCCESS)**: Command executed successfully
+- **`2` (VALIDATION_FAILED)**: Invalid email address, missing required arguments, or invalid command
+- **`3` (FILE_NOT_FOUND)**: Configuration file not found, password file not found, or target file/directory missing
+- **`6` (CONFIG_ERROR)**: Configuration file syntax error, validation failure, or missing required settings
+
+---
 
 ## 🔒 Password Encryption
 

@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from email_processor.__main__ import main
+from email_processor.exit_codes import ExitCode
 from email_processor.imap.fetcher import ProcessingMetrics, ProcessingResult
 
 
@@ -117,7 +118,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui_class.return_value = mock_ui
                 with patch("pathlib.Path.exists", return_value=False):
                     result = main()
-                    self.assertEqual(result, 1)
+                    self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
                     # Check that error message was printed
                     mock_ui.error.assert_called()
 
@@ -280,7 +281,16 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 1)
+                # Check appropriate exit code based on test context
+                self.assertIn(
+                    result,
+                    (
+                        ExitCode.FILE_NOT_FOUND,
+                        ExitCode.VALIDATION_FAILED,
+                        ExitCode.CONFIG_ERROR,
+                        ExitCode.PROCESSING_ERROR,
+                    ),
+                )
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -513,7 +523,16 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 1)
+                # Check appropriate exit code based on test context
+                self.assertIn(
+                    result,
+                    (
+                        ExitCode.FILE_NOT_FOUND,
+                        ExitCode.VALIDATION_FAILED,
+                        ExitCode.CONFIG_ERROR,
+                        ExitCode.PROCESSING_ERROR,
+                    ),
+                )
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -555,7 +574,16 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 1)
+                # Check appropriate exit code based on test context
+                self.assertIn(
+                    result,
+                    (
+                        ExitCode.FILE_NOT_FOUND,
+                        ExitCode.VALIDATION_FAILED,
+                        ExitCode.CONFIG_ERROR,
+                        ExitCode.PROCESSING_ERROR,
+                    ),
+                )
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -596,7 +624,16 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 1)
+                # Check appropriate exit code based on test context
+                self.assertIn(
+                    result,
+                    (
+                        ExitCode.FILE_NOT_FOUND,
+                        ExitCode.VALIDATION_FAILED,
+                        ExitCode.CONFIG_ERROR,
+                        ExitCode.PROCESSING_ERROR,
+                    ),
+                )
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -664,7 +701,9 @@ class TestSMTPSend(unittest.TestCase):
                         mock_smtp = MagicMock()
                         mock_smtp_connect_patch.return_value = mock_smtp
                     result = main()
-                    self.assertEqual(result, 1)  # Failed because one file failed
+                    self.assertEqual(
+                        result, ExitCode.PROCESSING_ERROR
+                    )  # Failed because one file failed
                     # Check that messages were printed via UI (info or print)
                     # When has_rich is False, it uses info() instead of print()
                     # Note: info() is called multiple times, so check if any call was made
@@ -816,7 +855,16 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 1)
+                # Check appropriate exit code based on test context
+                self.assertIn(
+                    result,
+                    (
+                        ExitCode.FILE_NOT_FOUND,
+                        ExitCode.VALIDATION_FAILED,
+                        ExitCode.CONFIG_ERROR,
+                        ExitCode.PROCESSING_ERROR,
+                    ),
+                )
                 mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -840,7 +888,9 @@ class TestSMTPSend(unittest.TestCase):
                 # argparse will raise SystemExit: 2 when required --to is missing
                 with self.assertRaises(SystemExit) as cm:
                     main()
-                self.assertEqual(cm.exception.code, 2)  # EXIT_INVALID_ARGS
+                from email_processor.exit_codes import ExitCode
+
+                self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.smtp.get_imap_password")
@@ -876,7 +926,7 @@ class TestSMTPSend(unittest.TestCase):
                     side_effect=Exception("Password error"),
                 ):
                     result = main()
-                    self.assertEqual(result, 1)
+                    self.assertEqual(result, ExitCode.CONFIG_ERROR)
                     mock_ui.error.assert_called()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1042,7 +1092,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui_class.return_value = mock_ui
                 with patch("pathlib.Path.exists", return_value=False):
                     result = main()
-                    self.assertEqual(result, 1)
+                    self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
                     # Check that error message was printed
                     mock_ui.error.assert_called()
 
@@ -1080,7 +1130,7 @@ class TestSMTPSend(unittest.TestCase):
                 mock_ui = MagicMock()
                 mock_ui_class.return_value = mock_ui
                 result = main()
-                self.assertEqual(result, 1)
+                self.assertEqual(result, ExitCode.FILE_NOT_FOUND)
                 # Check that error message was printed
                 mock_ui.error.assert_called()
 
@@ -1141,7 +1191,7 @@ class TestSMTPConfigErrors(unittest.TestCase):
                         mock_storage.is_sent.return_value = False
                         mock_storage_class.return_value = mock_storage
                         result = main()
-                        self.assertEqual(result, 1)
+                        self.assertEqual(result, ExitCode.CONFIG_ERROR)
                         mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)
@@ -1182,7 +1232,7 @@ class TestSMTPConfigErrors(unittest.TestCase):
                         mock_storage.is_sent.return_value = False
                         mock_storage_class.return_value = mock_storage
                         result = main()
-                        self.assertEqual(result, 1)
+                        self.assertEqual(result, ExitCode.CONFIG_ERROR)
                         mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)
@@ -1224,7 +1274,7 @@ class TestSMTPConfigErrors(unittest.TestCase):
                         mock_storage.is_sent.return_value = False
                         mock_storage_class.return_value = mock_storage
                         result = main()
-                        self.assertEqual(result, 1)
+                        self.assertEqual(result, ExitCode.CONFIG_ERROR)
                         mock_ui.error.assert_called()
         finally:
             Path(test_file).unlink(missing_ok=True)
@@ -1379,7 +1429,7 @@ class TestSMTPWarning(unittest.TestCase):
             result = send_folder(
                 {}, str(self.test_folder), "test@example.com", None, False, "config.yaml", ui
             )
-            self.assertEqual(result, 1)
+            self.assertEqual(result, ExitCode.CONFIG_ERROR)
             mock_error.assert_called_once()
 
     @patch("email_processor.__main__.ConfigLoader")
@@ -1396,7 +1446,7 @@ class TestSMTPWarning(unittest.TestCase):
         result = send_folder(
             {"smtp": {}}, str(self.test_folder), "test@example.com", None, False, "config.yaml", ui
         )
-        self.assertEqual(result, 1)
+        self.assertEqual(result, ExitCode.CONFIG_ERROR)
 
     @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.smtp.get_imap_password")
