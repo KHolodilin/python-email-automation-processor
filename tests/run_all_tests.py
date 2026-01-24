@@ -14,7 +14,7 @@ if __name__ == "__main__":
         "--cov=email_processor",
         "--cov-report=term-missing",
         "--cov-report=html",
-        "--cov-fail-under=90",
+        "--cov-fail-under=95",
     ]
 
     result = subprocess.run(cmd, check=False)
