@@ -111,8 +111,10 @@ python -m email_processor fetch
 ```bash
 # Send a single file
 python -m email_processor send file /path/to/file.pdf --to recipient@example.com
+```
 
-# Full pipeline: fetch + send
+### 7. Full pipeline: fetch + send
+```bash
 python -m email_processor run
 ```
 
