@@ -65,16 +65,9 @@ This ensures:
 
 ## Installation and Initial Setup
 
-### 1. Install Dependencies
+### 1. Install the module
 ```bash
-# Create a virtual environment (recommended)
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# or
-source .venv/bin/activate  # Linux/macOS
-
-# Install dependencies
-pip install -r requirements.txt
+pip install email-processor
 ```
 
 ### 2. Create Configuration
@@ -88,7 +81,9 @@ python -m email_processor config init
 ### 3. Set Password
 ```bash
 # Set IMAP password (will be prompted interactively)
+# --user can be omitted if imap.user is set in config.yaml
 python -m email_processor password set --user your_email@example.com
+python -m email_processor password set   # uses imap.user from config
 
 # Or from file
 python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
@@ -103,13 +98,34 @@ python -m email_processor config validate
 python -m email_processor status
 ```
 
-### 5. First Run
+### 5. Fetch (download emails and attachments)
+Uses config by default (IMAP server, folder, processing options).
 ```bash
-# Run email processing (test mode without real actions)
+# Test mode (no real actions)
 python -m email_processor fetch --dry-run
 
-# Real run
+# Run fetch
 python -m email_processor fetch
+```
+
+### 6. Send (email files)
+```bash
+# Send a single file
+python -m email_processor send file /path/to/file.pdf --to recipient@example.com
+```
+
+### 7. Send All Files from Folder
+Uses config by default (`smtp.send_folder`, `smtp.default_recipient`).
+```bash
+# Send from folder (config defaults)
+python -m email_processor send
+# Or explicitly:
+python -m email_processor send folder
+```
+
+### 8. Full pipeline: fetch + send
+```bash
+python -m email_processor run
 ```
 
 ---
@@ -130,6 +146,7 @@ python -m email_processor run --since 7d --max-emails 100
 ```
 
 #### Email Fetching Only (without sending)
+Uses config (IMAP, processing) by default.
 ```bash
 # Fetch emails and attachments
 python -m email_processor fetch
@@ -169,7 +186,12 @@ python -m email_processor send file file.pdf --to user@example.com --dry-run
 
 #### Send All Files from Folder
 ```bash
-# Send all new files from folder
+# With config defaults (smtp.send_folder, smtp.default_recipient)
+python -m email_processor send
+# Or explicitly:
+python -m email_processor send folder
+
+# Explicit path and recipient
 python -m email_processor send folder /path/to/folder --to recipient@example.com
 
 # With custom subject
@@ -185,7 +207,9 @@ python -m email_processor send folder /path/to/folder --to user@example.com --su
 #### Set Password
 ```bash
 # Interactive password input
+# --user is optional when imap.user is in config.yaml
 python -m email_processor password set --user your_email@example.com
+python -m email_processor password set   # uses imap.user from config
 
 # From file (file will be deleted after reading)
 python -m email_processor password set --user your_email@example.com --password-file ~/.pass --delete-after-read
@@ -193,8 +217,9 @@ python -m email_processor password set --user your_email@example.com --password-
 
 #### Clear Password
 ```bash
-# Delete saved password
+# Delete saved password (--user optional if imap.user in config)
 python -m email_processor password clear --user your_email@example.com
+python -m email_processor password clear   # uses imap.user from config
 ```
 
 ### Configuration Management
@@ -743,42 +768,6 @@ Dictionary of regex patterns to folder paths. Emails matching a pattern will be 
 - Patterns are checked in order, and the first match is used
 
 ---
-
-# 🛠️ Features & Improvements
-
-## v7.1 Features
-- ✅ **Modular architecture** - Clean separation of concerns
-- ✅ **YAML configuration** - Easy configuration management
-- ✅ **Keyring password storage** - Secure credential management
-- ✅ **Per-day UID storage** - Optimized performance
-- ✅ **Two-phase IMAP fetch** - Efficient email processing
-- ✅ **Password management commands** - `password set` and `password clear` subcommands
-- ✅ **Configuration validation** - Validates config on startup
-- ✅ **Structured logging** - JSON and console formats with file output
-- ✅ **Configurable logging levels** - DEBUG, INFO, WARNING, ERROR, CRITICAL
-- ✅ **Enhanced error handling** - Comprehensive error recovery
-- ✅ **Detailed processing statistics** - File type statistics
-- ✅ **Progress bar** - Visual progress indicator (tqdm)
-- ✅ **File extension filtering** - Whitelist/blacklist support
-- ✅ **Disk space checking** - Prevents out-of-space errors
-- ✅ **Dry-run mode** - Test without downloading (`--dry-run`)
-- ✅ **Type hints** - Full type annotation support
-- ✅ **Path traversal protection** - Security hardening
-- ✅ **Attachment size validation** - Prevents oversized downloads
-
----
-
-# 📝 Notes
-
-- The script is **idempotent**: safe to run multiple times
-- Processed UIDs are stored per day for optimal performance
-- Passwords are securely stored in system keyring
-- Configuration is validated on startup
-- All errors are logged with appropriate detail levels
-- Progress bar shows real-time statistics (processed, skipped, errors)
-- File extension filtering helps prevent unwanted downloads
-- Disk space is checked before each download (with 10MB buffer)
-- Logs are automatically rotated daily when file logging is enabled
 
 # 🏗️ Architecture
 

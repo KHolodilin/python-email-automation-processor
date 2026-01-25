@@ -113,13 +113,10 @@ class TestSMTPConnection(unittest.TestCase):
         with self.assertRaises(ConnectionError) as context:
             smtp_connect("smtp.example.com", 587, "user", "password", max_retries=2, retry_delay=1)
 
-        # Error message should contain connection failure info
+        # Error message should contain connection failure info (avoid substring
+        # checks that CodeQL treats as URL sanitization: py/incomplete-url-substring-sanitization)
         error_msg = str(context.exception)
-        self.assertTrue(
-            "Failed to connect" in error_msg
-            or "Unexpected error" in error_msg
-            or "smtp.example.com" in error_msg
-        )
+        self.assertTrue("Failed to connect" in error_msg or "Unexpected error" in error_msg)
         self.assertEqual(mock_smtp.login.call_count, 2)
 
     @patch("email_processor.smtp.client.smtplib.SMTP")

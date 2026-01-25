@@ -12,6 +12,7 @@ from typing import Optional
 
 from email_processor.logging.setup import get_logger
 from email_processor.smtp.config import SMTPConfig
+from email_processor.utils.redact import redact_email
 
 
 def format_subject_template(template: str, context: dict[str, str]) -> str:
@@ -360,8 +361,8 @@ class EmailSender:
             "email_sender_initialized",
             smtp_server=config.smtp_server,
             smtp_port=config.smtp_port,
-            smtp_user=config.smtp_user,
-            from_address=config.from_address,
+            smtp_user=redact_email(config.smtp_user or ""),
+            from_address=redact_email(config.from_address or ""),
         )
 
     def send_file(

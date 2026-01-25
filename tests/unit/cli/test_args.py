@@ -65,6 +65,18 @@ class TestParseArguments(unittest.TestCase):
             args = parse_arguments()
             self.assertTrue(args.delete_after_read)
 
+    def test_parse_arguments_password_set_without_user(self):
+        """Test parsing password set without --user (optional, fallback from config)."""
+        with patch(
+            "sys.argv",
+            ["email_processor", "password", "set", "--password-file", "p.txt"],
+        ):
+            args = parse_arguments()
+            self.assertEqual(args.command, "password")
+            self.assertEqual(args.password_command, "set")
+            self.assertIsNone(args.user)
+            self.assertEqual(args.password_file, "p.txt")
+
     def test_parse_arguments_dry_run(self):
         """Test parsing --dry-run argument."""
         with patch("sys.argv", ["email_processor", "run", "--dry-run"]):
@@ -111,6 +123,15 @@ class TestParseArguments(unittest.TestCase):
             self.assertEqual(args.send_command, "folder")
             self.assertEqual(args.dir, "folder")
             self.assertEqual(args.to, "test@example.com")
+
+    def test_parse_arguments_send_folder_no_args(self):
+        """Test parsing send folder without dir/--to (optional, use config defaults)."""
+        with patch("sys.argv", ["email_processor", "send", "folder"]):
+            args = parse_arguments()
+            self.assertEqual(args.command, "send")
+            self.assertEqual(args.send_command, "folder")
+            self.assertIsNone(args.dir)
+            self.assertIsNone(args.to)
 
     def test_parse_arguments_send_subject(self):
         """Test parsing --subject argument for send."""

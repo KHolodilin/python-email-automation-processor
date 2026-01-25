@@ -183,13 +183,15 @@ def parse_arguments() -> argparse.Namespace:
     send_folder_parser.add_argument(
         "dir",
         type=str,
-        help="Directory path containing files to send",
+        nargs="?",
+        default=None,
+        help="Directory path (default: smtp.send_folder from config)",
     )
     send_folder_parser.add_argument(
         "--to",
         type=str,
-        required=True,
-        help="Recipient email address",
+        default=None,
+        help="Recipient email (default: smtp.default_recipient from config)",
     )
     send_folder_parser.add_argument(
         "--subject",
@@ -237,8 +239,8 @@ def parse_arguments() -> argparse.Namespace:
     password_set_parser.add_argument(
         "--user",
         type=str,
-        required=True,
-        help="IMAP user login",
+        default=None,
+        help="IMAP user login (default: imap.user from config)",
     )
     password_set_parser.add_argument(
         "--password-file",
@@ -261,8 +263,8 @@ def parse_arguments() -> argparse.Namespace:
     password_clear_parser.add_argument(
         "--user",
         type=str,
-        required=True,
-        help="IMAP user login",
+        default=None,
+        help="IMAP user login (default: imap.user from config)",
     )
 
     # Command: config (with subcommands)

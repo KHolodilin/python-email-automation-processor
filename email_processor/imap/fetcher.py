@@ -68,6 +68,7 @@ from email_processor.storage.uid_storage import (
 )
 from email_processor.utils.context import set_correlation_id, set_request_id
 from email_processor.utils.email_utils import decode_mime_header_value, parse_email_date
+from email_processor.utils.redact import redact_email
 
 
 def get_start_date(days_back: int) -> str:
@@ -687,7 +688,7 @@ class Fetcher:
 
         # Sender filter
         if not self.filter.is_allowed_sender(sender):
-            uid_logger.debug("sender_not_allowed", sender=sender)
+            uid_logger.debug("sender_not_allowed", sender=redact_email(sender))
             if self.skip_non_allowed_as_processed:
                 try:
                     save_processed_uid_for_day(self.processed_dir, day_str, uid, processed_cache)
