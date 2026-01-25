@@ -318,3 +318,4 @@ htmlcov/
 /.email_password
 /.vscode/settings.json
 /40.0
+/docs/_build
