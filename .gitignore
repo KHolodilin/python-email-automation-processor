@@ -68,8 +68,8 @@ instance/
 # Scrapy stuff:
 .scrapy
 
-# Sphinx documentation
-docs/_build/
+# Sphinx documentation (output). docs/_build/ used for unofficial docs (plans, etc.)
+# docs/_build/
 
 # PyBuilder
 .pybuilder/
@@ -317,3 +317,4 @@ htmlcov/
 /send_folder
 /.email_password
 /.vscode/settings.json
+/40.0

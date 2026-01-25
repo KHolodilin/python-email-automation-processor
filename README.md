@@ -681,7 +681,7 @@ python -m email_processor
 pip install -e .
 email-processor
 
-# To build distributable package for pip install, see BUILD.md
+# To build distributable package for pip install, see `docs/_build/BUILD.md`
 ```
 
 ## 🛠️ Development Setup
@@ -798,5 +798,6 @@ Key modules:
 
 # 📚 Additional Documentation
 
-- **Testing Guide**: See `README_TESTS.md`
-- **Building and Distribution**: See `BUILD.md` (how to build package for `pip install`)
+- **Testing Guide**: See `docs/_build/README_TESTS.md`
+- **Building and Distribution**: See `docs/_build/BUILD.md` (how to build package for `pip install`)
+- **Plans, reports, internal docs**: `docs/_build/` (PLAN, REDUNDANT_CODE_REPORT, unit-tests-structure, etc.)
