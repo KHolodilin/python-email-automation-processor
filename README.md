@@ -99,6 +99,7 @@ python -m email_processor status
 ```
 
 ### 5. Fetch (download emails and attachments)
+Uses config by default (IMAP server, folder, processing options).
 ```bash
 # Test mode (no real actions)
 python -m email_processor fetch --dry-run
@@ -113,7 +114,16 @@ python -m email_processor fetch
 python -m email_processor send file /path/to/file.pdf --to recipient@example.com
 ```
 
-### 7. Full pipeline: fetch + send
+### 7. Send All Files from Folder
+Uses config by default (`smtp.send_folder`, `smtp.default_recipient`).
+```bash
+# Send from folder (config defaults)
+python -m email_processor send
+# Or explicitly:
+python -m email_processor send folder
+```
+
+### 8. Full pipeline: fetch + send
 ```bash
 python -m email_processor run
 ```
@@ -136,6 +146,7 @@ python -m email_processor run --since 7d --max-emails 100
 ```
 
 #### Email Fetching Only (without sending)
+Uses config (IMAP, processing) by default.
 ```bash
 # Fetch emails and attachments
 python -m email_processor fetch
@@ -175,7 +186,12 @@ python -m email_processor send file file.pdf --to user@example.com --dry-run
 
 #### Send All Files from Folder
 ```bash
-# Send all new files from folder
+# With config defaults (smtp.send_folder, smtp.default_recipient)
+python -m email_processor send
+# Or explicitly:
+python -m email_processor send folder
+
+# Explicit path and recipient
 python -m email_processor send folder /path/to/folder --to recipient@example.com
 
 # With custom subject

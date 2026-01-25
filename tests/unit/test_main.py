@@ -707,25 +707,31 @@ class TestSendFolderCommand(unittest.TestCase):
             self.assertEqual(result, ExitCode.SUCCESS)
             mock_send_folder.assert_called_once()
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_send_folder_missing_dir(self, mock_load_config):
-        """Test send folder command without dir."""
-        mock_load_config.return_value = {"smtp": {}}
-
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_send_folder_missing_dir(self, mock_loader_class):
+        """Test send folder without dir and no smtp.send_folder in config."""
+        mock_loader_class.load.return_value = {"smtp": {}}
         with patch("sys.argv", ["email_processor", "send", "folder", "--to", "test@example.com"]):
-            with self.assertRaises(SystemExit) as cm:
-                main()
-            self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)  # from argparse
+            with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                mock_ui = MagicMock()
+                mock_ui_class.return_value = mock_ui
+                result = main()
+                self.assertEqual(result, ExitCode.VALIDATION_FAILED)
+                mock_ui.error.assert_called_once()
+                self.assertIn("send_folder", mock_ui.error.call_args[0][0])
 
-    @patch("email_processor.config.loader.ConfigLoader.load")
-    def test_send_folder_missing_to(self, mock_load_config):
-        """Test send folder command without --to."""
-        mock_load_config.return_value = {"smtp": {}}
-
+    @patch("email_processor.__main__.ConfigLoader")
+    def test_send_folder_missing_to(self, mock_loader_class):
+        """Test send folder without --to and no smtp.default_recipient in config."""
+        mock_loader_class.load.return_value = {"smtp": {}}
         with patch("sys.argv", ["email_processor", "send", "folder", "test_dir"]):
-            with self.assertRaises(SystemExit) as cm:
-                main()
-            self.assertEqual(cm.exception.code, ExitCode.VALIDATION_FAILED)  # from argparse
+            with patch("email_processor.__main__.CLIUI") as mock_ui_class:
+                mock_ui = MagicMock()
+                mock_ui_class.return_value = mock_ui
+                result = main()
+                self.assertEqual(result, ExitCode.VALIDATION_FAILED)
+                mock_ui.error.assert_called_once()
+                self.assertIn("default_recipient", mock_ui.error.call_args[0][0])
 
     @patch("email_processor.config.loader.ConfigLoader.load")
     @patch("email_processor.cli.commands.smtp.send_folder")

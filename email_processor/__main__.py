@@ -179,6 +179,14 @@ def main() -> int:
             return ExitCode.VALIDATION_FAILED
         return passwords.clear_passwords(user, ui)
 
+    # Command: send (default: send folder when no subcommand)
+    if args.command == "send" and args.send_command is None:
+        args.send_command = "folder"
+        if not hasattr(args, "dir"):
+            args.dir = None
+        if not hasattr(args, "to"):
+            args.to = None
+
     # Command: send file
     if args.command == "send" and args.send_command == "file":
         if not hasattr(args, "path") or not args.path:
@@ -211,16 +219,20 @@ def main() -> int:
 
     # Command: send folder
     if args.command == "send" and args.send_command == "folder":
-        if not hasattr(args, "dir") or not args.dir:
-            ui.error("Directory path is required")
+        folder = args.dir if hasattr(args, "dir") else None
+        to_addr = args.to if hasattr(args, "to") else None
+        folder = folder or cfg.get("smtp", {}).get("send_folder")
+        to_addr = to_addr or cfg.get("smtp", {}).get("default_recipient")
+        if not folder:
+            ui.error("Directory path is required or set smtp.send_folder in config")
             return ExitCode.VALIDATION_FAILED
-        if not hasattr(args, "to") or not args.to:
-            ui.error("--to is required")
+        if not to_addr:
+            ui.error("--to is required or set smtp.default_recipient in config")
             return ExitCode.VALIDATION_FAILED
 
         # Validate email addresses
-        if not _validate_email(args.to):
-            ui.error(f"Invalid email address: {args.to}")
+        if not _validate_email(to_addr):
+            ui.error(f"Invalid email address: {to_addr}")
             return ExitCode.VALIDATION_FAILED
         if hasattr(args, "cc") and args.cc and not _validate_email(args.cc):
             ui.error(f"Invalid CC email address: {args.cc}")
@@ -231,8 +243,8 @@ def main() -> int:
 
         return smtp.send_folder(
             cfg,
-            args.dir,
-            args.to,
+            folder,
+            to_addr,
             args.subject if hasattr(args, "subject") else None,
             args.dry_run,
             config_path,

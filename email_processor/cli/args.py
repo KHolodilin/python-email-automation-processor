@@ -183,13 +183,15 @@ def parse_arguments() -> argparse.Namespace:
     send_folder_parser.add_argument(
         "dir",
         type=str,
-        help="Directory path containing files to send",
+        nargs="?",
+        default=None,
+        help="Directory path (default: smtp.send_folder from config)",
     )
     send_folder_parser.add_argument(
         "--to",
         type=str,
-        required=True,
-        help="Recipient email address",
+        default=None,
+        help="Recipient email (default: smtp.default_recipient from config)",
     )
     send_folder_parser.add_argument(
         "--subject",

@@ -124,6 +124,15 @@ class TestParseArguments(unittest.TestCase):
             self.assertEqual(args.dir, "folder")
             self.assertEqual(args.to, "test@example.com")
 
+    def test_parse_arguments_send_folder_no_args(self):
+        """Test parsing send folder without dir/--to (optional, use config defaults)."""
+        with patch("sys.argv", ["email_processor", "send", "folder"]):
+            args = parse_arguments()
+            self.assertEqual(args.command, "send")
+            self.assertEqual(args.send_command, "folder")
+            self.assertIsNone(args.dir)
+            self.assertIsNone(args.to)
+
     def test_parse_arguments_send_subject(self):
         """Test parsing --subject argument for send."""
         with patch(

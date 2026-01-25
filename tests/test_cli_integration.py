@@ -210,6 +210,31 @@ logging:
             mock_send_folder.assert_called_once()
 
     @patch("email_processor.__main__.ConfigLoader")
+    @patch("email_processor.cli.commands.smtp.send_folder")
+    def test_send_without_subcommand_uses_folder_config_defaults(
+        self, mock_send_folder, mock_config_loader_class
+    ):
+        """Test 'send' without subcommand defaults to send folder from config."""
+        test_folder = Path(self.temp_dir) / "outbox"
+        test_folder.mkdir()
+        (test_folder / "a.txt").write_bytes(b"a")
+        mock_config_loader_class.load.return_value = {
+            "smtp": {
+                "send_folder": str(test_folder),
+                "default_recipient": "default@example.com",
+            },
+        }
+        mock_send_folder.return_value = 0
+
+        with patch("sys.argv", ["email_processor", "send"]):
+            result = main()
+            self.assertEqual(result, 0)
+            mock_send_folder.assert_called_once()
+            call_args = mock_send_folder.call_args[0]
+            self.assertEqual(call_args[1], str(test_folder))
+            self.assertEqual(call_args[2], "default@example.com")
+
+    @patch("email_processor.__main__.ConfigLoader")
     @patch("email_processor.cli.commands.imap.run_processor")
     def test_fetch_command(self, mock_run_processor, mock_config_loader_class):
         """Test fetch command."""
