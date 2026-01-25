@@ -65,16 +65,9 @@ This ensures:
 
 ## Installation and Initial Setup
 
-### 1. Install Dependencies
+### 1. Install the module
 ```bash
-# Create a virtual environment (recommended)
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# or
-source .venv/bin/activate  # Linux/macOS
-
-# Install dependencies
-pip install -r requirements.txt
+pip install email-processor
 ```
 
 ### 2. Create Configuration
@@ -105,13 +98,22 @@ python -m email_processor config validate
 python -m email_processor status
 ```
 
-### 5. First Run
+### 5. Fetch (download emails and attachments)
 ```bash
-# Run email processing (test mode without real actions)
+# Test mode (no real actions)
 python -m email_processor fetch --dry-run
 
-# Real run
+# Run fetch
 python -m email_processor fetch
+```
+
+### 6. Send (email files)
+```bash
+# Send a single file
+python -m email_processor send file /path/to/file.pdf --to recipient@example.com
+
+# Full pipeline: fetch + send
+python -m email_processor run
 ```
 
 ---
@@ -748,42 +750,6 @@ Dictionary of regex patterns to folder paths. Emails matching a pattern will be 
 - Patterns are checked in order, and the first match is used
 
 ---
-
-# 🛠️ Features & Improvements
-
-## v7.1 Features
-- ✅ **Modular architecture** - Clean separation of concerns
-- ✅ **YAML configuration** - Easy configuration management
-- ✅ **Keyring password storage** - Secure credential management
-- ✅ **Per-day UID storage** - Optimized performance
-- ✅ **Two-phase IMAP fetch** - Efficient email processing
-- ✅ **Password management commands** - `password set` and `password clear` subcommands
-- ✅ **Configuration validation** - Validates config on startup
-- ✅ **Structured logging** - JSON and console formats with file output
-- ✅ **Configurable logging levels** - DEBUG, INFO, WARNING, ERROR, CRITICAL
-- ✅ **Enhanced error handling** - Comprehensive error recovery
-- ✅ **Detailed processing statistics** - File type statistics
-- ✅ **Progress bar** - Visual progress indicator (tqdm)
-- ✅ **File extension filtering** - Whitelist/blacklist support
-- ✅ **Disk space checking** - Prevents out-of-space errors
-- ✅ **Dry-run mode** - Test without downloading (`--dry-run`)
-- ✅ **Type hints** - Full type annotation support
-- ✅ **Path traversal protection** - Security hardening
-- ✅ **Attachment size validation** - Prevents oversized downloads
-
----
-
-# 📝 Notes
-
-- The script is **idempotent**: safe to run multiple times
-- Processed UIDs are stored per day for optimal performance
-- Passwords are securely stored in system keyring
-- Configuration is validated on startup
-- All errors are logged with appropriate detail levels
-- Progress bar shows real-time statistics (processed, skipped, errors)
-- File extension filtering helps prevent unwanted downloads
-- Disk space is checked before each download (with 10MB buffer)
-- Logs are automatically rotated daily when file logging is enabled
 
 # 🏗️ Architecture
 
