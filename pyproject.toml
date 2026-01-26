@@ -7,7 +7,7 @@ packages = {find = {}}
 
 [project]
 name = "email-processor"
-version = "8.0.4"
+version = "8.0.5"
 description = "Email attachment processor with IMAP and SMTP support"
 readme = "README.md"
 requires-python = ">=3.9"
