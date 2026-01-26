@@ -8,6 +8,8 @@ from typing import Any, Optional
 
 import structlog
 
+from email_processor import __version__
+
 
 def get_logger(uid: Optional[str] = None) -> structlog.BoundLogger:
     """
@@ -127,6 +129,10 @@ def setup_logging(log_config: dict[str, Any]) -> None:
             print(f"Warning: Could not setup file logging to {log_dir}: {e}", file=sys.stderr)
         except Exception as e:
             print(f"Warning: Unexpected error setting up file logging: {e}", file=sys.stderr)
+
+    # Log version information after logging is set up
+    logger = get_logger()
+    logger.info("application_started", version=__version__)
 
 
 class LoggingManager:
