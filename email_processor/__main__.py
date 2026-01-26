@@ -4,7 +4,7 @@ import re
 import sys
 from email.utils import parseaddr
 
-from email_processor import ConfigLoader
+from email_processor import ConfigLoader, __version__
 from email_processor.cli import CLIUI
 from email_processor.cli.args import parse_arguments
 from email_processor.cli.commands import config, imap, passwords, smtp, status
@@ -126,6 +126,10 @@ def main() -> int:
 
     # Create UI instance with verbose/quiet flags
     ui = CLIUI(verbose=args.verbose, quiet=args.quiet)
+
+    # Print version to console (unless quiet mode)
+    if not args.quiet:
+        ui.info(f"Email Processor v{__version__}")
 
     # Handle subcommands
     if not args.command:
