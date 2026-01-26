@@ -268,9 +268,10 @@ class TestCreateConfigOverwrite(unittest.TestCase):
         mock_path_class.side_effect = lambda p: example_path if "example" in str(p) else target_path
 
         ui = CLIUI()
-        with patch.object(ui, "input", return_value="y"), patch.object(
-            ui, "success"
-        ) as mock_success:
+        with (
+            patch.object(ui, "input", return_value="y"),
+            patch.object(ui, "success") as mock_success,
+        ):
             result = create_default_config("config.yaml", ui)
             self.assertEqual(result, ExitCode.SUCCESS)
             mock_copy.assert_called_once_with(example_path, target_path)
