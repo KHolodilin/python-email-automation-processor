@@ -1,0 +1,57 @@
+# Email Processor Configuration Example
+# Copy this file to config.yaml and fill in your settings
+
+imap:
+  server: "imap.example.com"
+  user: "your_email@example.com"
+  max_retries: 5
+  retry_delay: 3
+
+# SMTP settings for sending emails
+smtp:
+  server: "smtp.example.com"
+  port: 587  # or 465 for SSL
+  use_tls: true  # for port 587
+  use_ssl: false  # for port 465
+  user: "your_email@example.com"  # SMTP login for authentication (reuse from imap.user or set separately)
+  from_address: "sender@example.com"  # Required: email address to send from (From header)
+  default_recipient: "recipient@example.com"  # default recipient email address (required)
+  max_email_size: 25  # MB
+  sent_files_dir: "sent_files"  # directory for storing sent file hashes
+  send_folder: "send_folder"  # Optional: default folder to send files from (can be overridden with --send-folder)
+  # Optional: subject templates
+  # subject_template: "File: {filename}"  # template for single file
+  # subject_template_package: "Package of files - {date}"  # template for multiple files
+  # Available variables: {filename}, {filenames}, {file_count}, {date}, {datetime}, {size}, {total_size}
+
+processing:
+  start_days_back: 5
+  archive_folder: "INBOX/Processed"
+  processed_dir: "processed_uids"  # Can be absolute or relative path
+  keep_processed_days: 180
+  archive_only_mapped: true
+  skip_non_allowed_as_processed: true
+  skip_unmapped_as_processed: true
+  show_progress: true  # Show progress bar during email processing (requires tqdm package)
+  # Extension filtering (optional):
+  # allowed_extensions: [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".txt"]  # Only download these extensions
+  # blocked_extensions: [".exe", ".bat", ".sh", ".scr", ".vbs", ".js"]  # Block these extensions (takes priority over allowed)
+
+# Logging settings
+logging:
+  level: INFO                      # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: console                  # Output format for console: "console" (readable) or "json" (structured)
+  format_file: json                # Output format for file logs: "console" (readable) or "json" (structured). Default: "json"
+  file: logs                       # Optional: Directory for log files (format: yyyy-mm-dd.log, rotated daily)
+                                   # If not set, logs go to stdout
+
+allowed_senders:
+  - "client1@example.com"
+  - "finance@example.com"
+  - "boss@example.com"
+
+topic_mapping:
+  ".*roadmap.*": "roadmap"
+  "(reports).*": "reports"
+  "(invoice).*": "invoices"
+  ".*": "default"  # Last rule is used as default for unmatched emails
