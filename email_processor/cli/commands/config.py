@@ -1,6 +1,7 @@
 """Configuration management commands."""
 
 import shutil
+from importlib import resources
 from pathlib import Path
 
 from email_processor.cli.ui import CLIUI
@@ -11,15 +12,27 @@ CONFIG_EXAMPLE = "config.yaml.example"
 
 
 def _find_config_example() -> Path:
-    """Find config.yaml.example file, checking current directory.
+    """Find config.yaml.example file, checking package first, then current directory.
 
     Returns:
         Path to config.yaml.example file
     """
-    # Check current directory (for development and installed package)
-    # Files from MANIFEST.in are in .dist-info directory
-    # TODO: Add support for finding config.yaml.example in package when included as package data
-    return Path(CONFIG_EXAMPLE)
+    # First, try to find in current directory (for development)
+    current_dir_path = Path(CONFIG_EXAMPLE)
+    if current_dir_path.exists():
+        return current_dir_path
+
+    # Try to find in package (for installed package)
+    try:
+        # Try to access from package data
+        with resources.path("email_processor", CONFIG_EXAMPLE) as pkg_path:
+            if pkg_path.exists():
+                return Path(pkg_path)
+    except (ModuleNotFoundError, FileNotFoundError, TypeError):
+        # Fallback to current directory if not found in package
+        pass
+
+    return current_dir_path
 
 
 def create_default_config(config_path: str, ui: CLIUI) -> int:
