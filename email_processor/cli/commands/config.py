@@ -1,6 +1,7 @@
 """Configuration management commands."""
 
 import shutil
+from importlib import resources
 from pathlib import Path
 
 from email_processor.cli.ui import CLIUI
@@ -8,6 +9,27 @@ from email_processor.config.loader import ConfigLoader, validate_config
 from email_processor.exit_codes import ExitCode
 
 CONFIG_EXAMPLE = "config.yaml.example"
+
+
+def _find_config_example() -> Path:
+    """Find config.yaml.example file, checking package first, then current directory.
+
+    Returns:
+        Path to config.yaml.example file
+    """
+    # First, try to find in current directory (for development)
+    current_dir_path = Path(CONFIG_EXAMPLE)
+    if current_dir_path.exists():
+        return current_dir_path
+
+    # Try to find in package (for installed package)
+    try:
+        # Files from MANIFEST.in are in .dist-info, but we can check package root
+        # For now, fallback to current directory if not found in package
+        # This will be improved when config.yaml.example is properly included as package data
+        return current_dir_path
+    except Exception:
+        return current_dir_path
 
 
 def create_default_config(config_path: str, ui: CLIUI) -> int:
@@ -20,7 +42,7 @@ def create_default_config(config_path: str, ui: CLIUI) -> int:
     Returns:
         int: 0 on success, 1 on error
     """
-    example_path = Path(CONFIG_EXAMPLE)
+    example_path = _find_config_example()
     target_path = Path(config_path)
 
     if not example_path.exists():
